@@ -425,9 +425,10 @@ export const LogsView: React.FC<LogsViewProps> = ({
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <img
-                      src={`https://www.google.com/s2/favicons?domain=${log.domain.replace(/^\*\./, "")}&sz=32`}
+                      src={`https://icons.duckduckgo.com/ip3/${log.domain.replace(/^\*\./, "")}.ico`}
                       className="w-4 h-4 rounded-sm shrink-0"
                       alt=""
+                      referrerPolicy="no-referrer"
                       onError={(e) => (e.currentTarget.style.opacity = "0")}
                     />
                     <span className="font-bold text-sm truncate">
@@ -516,9 +517,10 @@ export const LogsView: React.FC<LogsViewProps> = ({
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2 truncate">
                           <img
-                            src={`https://www.google.com/s2/favicons?domain=${log.domain.replace(/^\*\./, "")}&sz=32`}
+                            src={`https://icons.duckduckgo.com/ip3/${log.domain.replace(/^\*\./, "")}.ico`}
                             className="w-4 h-4 rounded-sm"
                             alt=""
+                            referrerPolicy="no-referrer"
                           />
                           <span className="font-bold text-sm truncate">
                             {log.domain}
@@ -605,9 +607,10 @@ export const LogsView: React.FC<LogsViewProps> = ({
                     value={
                       <div className="flex items-center gap-2 justify-end font-bold">
                         <img
-                          src={`https://www.google.com/s2/favicons?domain=${selectedLog.domain}&sz=32`}
+                          src={`https://icons.duckduckgo.com/ip3/${selectedLog.domain}.ico`}
                           className="w-4 h-4 rounded-sm"
                           alt=""
+                          referrerPolicy="no-referrer"
                           onError={(e) =>
                             (e.currentTarget.style.display = "none")
                           }
