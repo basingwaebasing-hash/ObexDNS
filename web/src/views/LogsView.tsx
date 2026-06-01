@@ -428,6 +428,7 @@ export const LogsView: React.FC<LogsViewProps> = ({
                       src={`https://www.google.com/s2/favicons?domain=${log.domain.replace(/^\*\./, "")}&sz=32`}
                       className="w-4 h-4 rounded-sm shrink-0"
                       alt=""
+                      referrerPolicy="no-referrer"
                       onError={(e) => (e.currentTarget.style.opacity = "0")}
                     />
                     <span className="font-bold text-sm truncate">
@@ -519,6 +520,7 @@ export const LogsView: React.FC<LogsViewProps> = ({
                             src={`https://www.google.com/s2/favicons?domain=${log.domain.replace(/^\*\./, "")}&sz=32`}
                             className="w-4 h-4 rounded-sm"
                             alt=""
+                            referrerPolicy="no-referrer"
                           />
                           <span className="font-bold text-sm truncate">
                             {log.domain}
@@ -608,6 +610,7 @@ export const LogsView: React.FC<LogsViewProps> = ({
                           src={`https://www.google.com/s2/favicons?domain=${selectedLog.domain}&sz=32`}
                           className="w-4 h-4 rounded-sm"
                           alt=""
+                          referrerPolicy="no-referrer"
                           onError={(e) =>
                             (e.currentTarget.style.display = "none")
                           }
