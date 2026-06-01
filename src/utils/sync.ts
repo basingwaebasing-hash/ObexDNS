@@ -10,8 +10,8 @@ export async function syncProfileLists(profileId: string, env: Env, ctx: Executi
   const { results: lists } = await env.DB.prepare("SELECT url FROM lists WHERE profile_id = ?").bind(profileId).all<List>();
   
   if (lists.length === 0) {
-    // 如果没有订阅列表，清理 R2 中的旧数据
-    if (env.BUCKET) await env.BUCKET.delete(`bloom/${profileId}.bin`);
+    // 如果没有订阅列表，清理旧数据
+    await env.DB.prepare("DELETE FROM profile_blooms WHERE profile_id = ?").bind(profileId).run();
     return;
   }
 
@@ -31,22 +31,17 @@ export async function syncProfileLists(profileId: string, env: Env, ctx: Executi
   const domainArray = Array.from(allDomains);
   const now = Math.floor(Date.now() / 1000);
 
-  if (domainArray.length > 0 && env.BUCKET) {
+  if (domainArray.length > 0) {
     // 构建高精度布隆过滤器 (10^-3)
     const falsePositiveRate = 0.001;
     const bloom = BloomFilter.create(domainArray.length, falsePositiveRate);
     domainArray.forEach(d => bloom.add(d));
     const binary = bloom.toUint8Array();
 
-    // 仅存储至 R2
-    const r2Key = `bloom/${profileId}.bin`;
-    await env.BUCKET.put(r2Key, binary, {
-      httpMetadata: { contentType: 'application/octet-stream' },
-      customMetadata: { 
-        item_count: domainArray.length.toString(),
-        synced_at: now.toString()
-      }
-    });
+    // 存储至 D1
+    await env.DB.prepare(
+      "INSERT INTO profile_blooms (profile_id, bloom_filter, updated_at) VALUES (?, ?, ?) ON CONFLICT(profile_id) DO UPDATE SET bloom_filter = excluded.bloom_filter, updated_at = excluded.updated_at"
+    ).bind(profileId, binary.buffer, now).run();
 
     // 更新 lists 表记录的同步时间 (作为定时任务的索引)
     await env.DB.prepare("UPDATE lists SET last_synced_at = ? WHERE profile_id = ?").bind(now, profileId).run();
@@ -56,6 +51,6 @@ export async function syncProfileLists(profileId: string, env: Env, ctx: Executi
       ctx.waitUntil(pipelineCache.clear(profileId));
     }
 
-    console.log(`[Sync] Profile ${profileId}: ${domainArray.length} domains synced to R2.`);
+    console.log(`[Sync] Profile ${profileId}: ${domainArray.length} domains synced to D1.`);
   }
 }

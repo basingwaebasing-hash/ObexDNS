@@ -37,6 +37,7 @@ import { getPresetRegions, type RegionConfigItem } from "../config/regions";
 
 interface SetupViewProps {
   profileId: string;
+  profileKey: string;
   toasterRef?: React.RefObject<OverlayToaster | null>;
 }
 
@@ -63,12 +64,13 @@ function useIsMobile() {
 
 export const SetupView: React.FC<SetupViewProps> = ({
   profileId,
+  profileKey,
   toasterRef,
 }) => {
   const isMobile = useIsMobile();
   const { t, i18n } = useTranslation();
   const presetRegions = useMemo(() => getPresetRegions(t), [i18n.language]);
-  const dohUrl = `${window.location.origin}/${profileId}`;
+  const dohUrl = `${window.location.origin}/${profileKey}`;
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [pagesDevIp, setPagesDevIp] = useState<string | null>(null);
@@ -365,8 +367,8 @@ export const SetupView: React.FC<SetupViewProps> = ({
         className={clsx(
           "bg-white dark:bg-gray-900 p-4 md:p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm setup-tabs-container",
           isMobile && [
-            "[&_.bp6-tab-list]:!overflow-x-auto",
-            "[&_.bp6-tab-list]:!flex-nowrap",
+            "[&_.bp6-tab-list]:overflow-x-auto!",
+            "[&_.bp6-tab-list]:flex-nowrap!",
             "[&_.bp6-tab-list]:pb-1",
             "[&_.bp6-tab-list]:[scrollbar-width:none]",
             "[&_.bp6-tab-list]:[-ms-overflow-style:none]",

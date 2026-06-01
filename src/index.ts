@@ -1,7 +1,7 @@
 import { Context, Env, User, ExecutionContext } from './types';
 import { parseDNSQuery } from './utils/dns';
 import { pipeline } from './pipeline';
-import { initializeLucia } from './lib/auth';
+import { readSessionCookie, validateSession } from './lib/auth';
 import { handleAuthRequest } from './api/auth';
 import { handleProfilesRequest } from './api/profiles';
 import { handleAccountRequest } from './api/account';
@@ -32,7 +32,7 @@ export default {
 
     const handleRequest = async (): Promise<Response> => {
       const url = new URL(request.url);
-      const lucia = initializeLucia(env.DB);
+
       const cache = (caches as any).default;
 
       // Auth API 路由 (无需鉴权)
@@ -72,13 +72,15 @@ export default {
       let currentUser: User | null = null;
       if (url.pathname.startsWith('/api/')) {
         const cookieHeader = request.headers.get("Cookie") || "";
-        const sessionId = lucia.readSessionCookie(cookieHeader);
+        const sessionId = readSessionCookie(cookieHeader);
         if (sessionId) {
-          const { user } = await lucia.validateSession(sessionId);
+          const { user } = await validateSession(env.DB, sessionId);
           if (user) currentUser = user as any;
         }
 
-        const isAuthRoute = ['/api/auth/login', '/api/auth/signup'].includes(url.pathname);
+        const isAuthRoute = [
+          '/api/auth/login', '/api/auth/signup', '/api/auth/prelogin'
+        ].includes(url.pathname);
         const isMobileConfigRoute = url.pathname.endsWith('/mobileconfig');
 
         if (!currentUser && !isAuthRoute && !isMobileConfigRoute) {
@@ -95,11 +97,19 @@ export default {
         return new Response("API Not Found", { status: 404 });
       }
 
-      // DoH 解析路由: /<6位ID>
-      const profileIdMatch = url.pathname.match(/^\/([a-zA-Z0-9]{6})$/);
-      if (profileIdMatch) {
+      // DoH 解析路由: /<6到12位字符串>
+      const profileKeyMatch = url.pathname.match(/^\/([a-zA-Z0-9]{6,12})$/);
+      const isDoHRequest = request.method === 'POST' || 
+                           url.searchParams.has('dns') || 
+                           request.headers.get('accept')?.includes('dns-message');
+                           
+      if (profileKeyMatch && isDoHRequest) {
         try {
-          const profileId = profileIdMatch[1];
+          const profileKey = profileKeyMatch[1];
+          const profileModel = new ProfileModel(env.DB);
+          const profile = await profileModel.findByKey(profileKey);
+          if (!profile) return new Response('Invalid Profile Key', { status: 404 });
+          const profileId = profile.id;
           const query = await parseDNSQuery(request);
           if (!query) return new Response('Invalid DNS Query', { status: 400 });
           const context: Context = { profileId, startTime: Date.now(), env, ctx };
@@ -146,7 +156,7 @@ export default {
       try {
         let response = await (env as any).ASSETS.fetch(request);
         if (response.status === 404) {
-          return await (env as any).ASSETS.fetch(new Request(url.origin + '/index.html', request));
+          return await (env as any).ASSETS.fetch(new Request(url.origin + '/', request));
         }
         return response;
       } catch (e) {
@@ -168,6 +178,20 @@ export default {
         await env.DB.prepare("DELETE FROM users WHERE role = 'user' AND last_active_at < ?").bind(inactivityThreshold).run();
       } catch (e) {
         console.error("[Cron] Inactive users cleanup failed:", e);
+      }
+
+      // 清理过期 Session
+      try {
+        await env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(now).run();
+      } catch (e) {
+        console.error("[Cron] Expired sessions cleanup failed:", e);
+      }
+
+      // 清理过期的 TOTP 临时会话
+      try {
+        await env.DB.prepare("DELETE FROM pending_totp_sessions WHERE expires_at < ?").bind(now).run();
+      } catch (e) {
+        console.error("[Cron] Expired pending TOTP sessions cleanup failed:", e);
       }
 
       // 全局日志清理 (高效 SQL)

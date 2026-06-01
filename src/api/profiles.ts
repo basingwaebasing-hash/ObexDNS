@@ -76,6 +76,14 @@ export async function handleProfilesRequest(request: Request, env: Env, user: Us
       });
     }
 
+    // POST /api/profiles/:id/rotate_key
+    if (pathParts[3] === 'rotate_key' && request.method === 'POST') {
+      const newKey = Math.random().toString(36).substring(2, 8) + Math.random().toString(36).substring(2, 8); // 12 chars
+      await profileModel.rotateKey(profileId, newKey);
+      ctx.waitUntil(pipeline.clearCache(profileId));
+      return new Response(JSON.stringify({ profile_key: newKey }), { headers: { 'Content-Type': 'application/json' } });
+    }
+
     // PATCH /api/profiles/:id/settings
     if (pathParts[3] === 'settings' && request.method === 'PATCH') {
       const newSettings = await request.json() as ProfileSettings;
@@ -211,6 +219,7 @@ export async function handleProfilesRequest(request: Request, env: Env, user: Us
     if (pathParts[3] === 'rules') {
       if (request.method === 'GET') { const results = await profileModel.getRules(profileId); return new Response(JSON.stringify(results), { headers: { 'Content-Type': 'application/json' } }); }
       if (request.method === 'POST') { const rule = await request.json() as any; await profileModel.addRule(profileId, rule); ctx.waitUntil(pipeline.clearCache(profileId)); return new Response(null, { status: 201 }); }
+      if (request.method === 'PUT') { const rule = await request.json() as any; await profileModel.updateRule(rule.id, profileId, rule); ctx.waitUntil(pipeline.clearCache(profileId)); return new Response(null, { status: 200 }); }
       if (request.method === 'DELETE') { const { id } = await request.json() as any; await profileModel.deleteRule(id, profileId); ctx.waitUntil(pipeline.clearCache(profileId)); return new Response(null, { status: 204 }); }
     }
   }

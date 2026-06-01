@@ -1,8 +1,7 @@
-import { D1Database, R2Bucket, ExecutionContext as CFExecutionContext } from "@cloudflare/workers-types";
+import { D1Database, ExecutionContext as CFExecutionContext } from "@cloudflare/workers-types";
 
 export interface Env {
   DB: D1Database;
-  BUCKET: R2Bucket;
   ASSETS: any;
   TURNSTILE_SECRET_KEY?: string;
   [key: string]: any;
@@ -13,6 +12,18 @@ export interface User {
   username: string;
   role: 'admin' | 'user';
   hashed_password?: string;
+  totp_enabled?: number;       // 0 | 1
+  totp_skip_password?: number; // 0 | 1 — when 1, login skips password check
+}
+
+export interface UserActivityLog {
+  id: number;
+  user_id: string;
+  action: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  timestamp: number;
+  extra: string | null;
 }
 
 export interface ProfileSettings {
@@ -32,6 +43,7 @@ export interface ProfileSettings {
 
 export interface Profile {
   id: string;
+  profile_key?: string;
   owner_id: string;
   name: string;
   settings: string;

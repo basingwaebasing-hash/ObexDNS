@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
+import { formatDateTime } from "../utils/date";
 
 interface LogEntry {
   id: number;
@@ -632,9 +633,7 @@ export const LogsView: React.FC<LogsViewProps> = ({
                   />
                   <DetailItem
                     label={t("logs.detailTime")}
-                    value={new Date(
-                      selectedLog.timestamp * 1000,
-                    ).toLocaleString()}
+                    value={formatDateTime(new Date(selectedLog.timestamp * 1000))}
                   />
                   <DetailItem
                     label={t("logs.detailStatus")}

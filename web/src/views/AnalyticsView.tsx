@@ -33,6 +33,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { formatDateTime } from "../utils/date";
 
 interface AnalyticsData {
   summary: { action: string; count: number }[];
@@ -290,7 +291,7 @@ export const AnalyticsView: React.FC<{ profileId: string }> = ({
                   shared={true}
                   labelFormatter={(ts) => {
                     const d = new Date(ts * 1000);
-                    return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    return formatDateTime(d, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                   }}
                   contentStyle={{
                     borderRadius: "16px", border: "1px solid rgba(255, 255, 255, 0.3)", boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1), inset 0 0 4px rgba(255, 255, 255, 0.4)",

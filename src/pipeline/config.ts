@@ -50,13 +50,15 @@ export const pipelineConfig = {
     const settings = JSON.parse(profile.settings);
     const rules = await profileModel.getRules(profileId);
     
-    // 从 R2 直接加载
-    const r2Key = `bloom/${profileId}.bin`;
+    // 从 D1 直接加载布隆过滤器
     try {
-      const object = await env.BUCKET.get(r2Key);
-      if (object) {
-        track('load_bloom_l3_r2');
-        const buffer = await object.arrayBuffer();
+      const bloomRow = await env.DB.prepare("SELECT bloom_filter FROM profile_blooms WHERE profile_id = ?")
+        .bind(profileId)
+        .first<{ bloom_filter: ArrayBuffer }>();
+        
+      if (bloomRow && bloomRow.bloom_filter) {
+        track('load_bloom_l3_d1');
+        const buffer = bloomRow.bloom_filter;
         const uint8 = new Uint8Array(buffer);
         bloom = BloomFilter.fromUint8Array(uint8);
 
@@ -69,7 +71,7 @@ export const pipelineConfig = {
         })));
       }
     } catch (e) {
-      console.error("[Config] R2 loading failed:", e);
+      console.error("[Config] D1 Bloom loading failed:", e);
     }
 
     const config = { settings, rules };
