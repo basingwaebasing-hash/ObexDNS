@@ -13,6 +13,18 @@ export interface User {
   username: string;
   role: 'admin' | 'user';
   hashed_password?: string;
+  totp_enabled?: number;       // 0 | 1
+  totp_skip_password?: number; // 0 | 1 — when 1, login skips password check
+}
+
+export interface UserActivityLog {
+  id: number;
+  user_id: string;
+  action: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  timestamp: number;
+  extra: string | null;
 }
 
 export interface ProfileSettings {

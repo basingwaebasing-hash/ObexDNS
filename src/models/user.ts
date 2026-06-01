@@ -44,4 +44,58 @@ export class UserModel {
     const count = await this.db.prepare("SELECT COUNT(*) as count FROM users").first<number>('count');
     return count === 0;
   }
+
+  /**
+   * Activates TOTP for a user by storing the encrypted secret and hashed recovery keys.
+   * @param id - User ID
+   * @param secret - Base32 TOTP secret
+   * @param recoveryKeysHashed - JSON array of SHA-256-hashed recovery keys
+   */
+  async updateTOTP(id: string, secret: string, recoveryKeysHashed: string[]): Promise<boolean> {
+    const result = await this.db
+      .prepare('UPDATE users SET totp_secret = ?, totp_enabled = 1, totp_recovery_keys = ? WHERE id = ?')
+      .bind(secret, JSON.stringify(recoveryKeysHashed), id)
+      .run();
+    return result.success;
+  }
+
+  /**
+   * Disables TOTP and clears all TOTP-related data for a user.
+   * @param id - User ID
+   */
+  async removeTOTP(id: string): Promise<boolean> {
+    const result = await this.db
+      .prepare('UPDATE users SET totp_secret = NULL, totp_enabled = 0, totp_skip_password = 0, totp_recovery_keys = NULL WHERE id = ?')
+      .bind(id)
+      .run();
+    return result.success;
+  }
+
+  /**
+   * Updates the skip-password setting for a user's TOTP configuration.
+   * @param id - User ID
+   * @param skipPassword - Whether to skip password during login
+   */
+  async updateTOTPSettings(id: string, skipPassword: boolean): Promise<boolean> {
+    const result = await this.db
+      .prepare('UPDATE users SET totp_skip_password = ? WHERE id = ?')
+      .bind(skipPassword ? 1 : 0, id)
+      .run();
+    return result.success;
+  }
+
+  /**
+   * Removes a single used recovery key from the stored hash array.
+   * @param id - User ID
+   * @param usedIndex - Index of the consumed key to remove
+   * @param currentHashes - Current full array of hashed recovery keys
+   */
+  async consumeRecoveryKey(id: string, usedIndex: number, currentHashes: string[]): Promise<boolean> {
+    const updated = currentHashes.filter((_, i) => i !== usedIndex);
+    const result = await this.db
+      .prepare('UPDATE users SET totp_recovery_keys = ? WHERE id = ?')
+      .bind(JSON.stringify(updated), id)
+      .run();
+    return result.success;
+  }
 }

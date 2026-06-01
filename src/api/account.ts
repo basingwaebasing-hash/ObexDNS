@@ -2,9 +2,11 @@ import { Env, User, ExecutionContext } from "../types";
 import { RBAC } from "../lib/rbac";
 import { generateId, createBlankSessionCookie } from "../lib/auth";
 import { hashPassword, verifyPassword } from "../utils/crypto";
+import { generateTOTPSecret, getTOTPUri, generateRecoveryKeys, hashRecoveryKey, verifyTOTP } from "../lib/totp";
 import { UserModel } from "../models/user";
 import { ProfileModel } from "../models/profile";
 import { LogModel } from "../models/log";
+import { ActivityLogModel } from "../models/activityLog";
 
 export async function handleAccountRequest(request: Request, env: Env, user: User, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
@@ -12,13 +14,26 @@ export async function handleAccountRequest(request: Request, env: Env, user: Use
   const userModel = new UserModel(env.DB);
   const profileModel = new ProfileModel(env.DB);
   const logModel = new LogModel(env.DB);
+  const activityLog = new ActivityLogModel(env.DB);
+  const clientIp = request.headers.get("CF-Connecting-IP") || "127.0.0.1";
+  const userAgent = request.headers.get("User-Agent");
 
-  // 个人账号接口 (/api/account/...)
+  // ─── 个人账号接口 (/api/account/...) ───────────────────────────────────────
   if (pathParts[1] === 'account') {
+
+    // GET /api/account/me
     if (pathParts[2] === 'me' && request.method === 'GET') {
-      return new Response(JSON.stringify({ id: user.id, username: user.username, role: user.role }), { headers: { 'Content-Type': 'application/json' } });
+      const dbUser = await userModel.getById(user.id);
+      return new Response(JSON.stringify({
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        totp_enabled: !!(dbUser?.totp_enabled),
+        totp_skip_password: !!(dbUser?.totp_skip_password),
+      }), { headers: { 'Content-Type': 'application/json' } });
     }
 
+    // PATCH /api/account/me (username update)
     if (pathParts[2] === 'me' && request.method === 'PATCH') {
       const { username: newUsername } = await request.json() as any;
       if (!newUsername || !/^[a-zA-Z0-9]{5,15}$/.test(newUsername)) {
@@ -33,6 +48,7 @@ export async function handleAccountRequest(request: Request, env: Env, user: Use
       }
     }
 
+    // POST /api/account/password (password change)
     if (pathParts[2] === 'password' && request.method === 'POST') {
       const { oldPassword, newPassword } = await request.json() as any;
       if (!newPassword || newPassword.length < 8 || !/(?=.*[a-zA-Z])(?=.*[0-9])/.test(newPassword)) {
@@ -40,18 +56,93 @@ export async function handleAccountRequest(request: Request, env: Env, user: Use
       }
       const dbUser = await userModel.getById(user.id);
       if (!dbUser || !(await verifyPassword(oldPassword, dbUser.hashed_password))) {
+        await activityLog.record(user.id, 'password_change_fail', clientIp, userAgent, { reason: 'wrong_current_password' });
         return new Response("Current password is incorrect", { status: 400 });
       }
       const hashedPassword = await hashPassword(newPassword);
       await userModel.updatePassword(user.id, hashedPassword);
+      await activityLog.record(user.id, 'password_change_success', clientIp, userAgent);
       return new Response(JSON.stringify({ success: true }));
     }
 
+    // GET /api/account/activity (user activity log)
+    if (pathParts[2] === 'activity' && request.method === 'GET') {
+      const params = new URL(request.url).searchParams;
+      const limit = Math.min(parseInt(params.get('limit') || '20', 10), 50);
+      const before = params.get('before') ? parseInt(params.get('before')!, 10) : undefined;
+      const entries = await activityLog.listByUser(user.id, limit, before);
+      return new Response(JSON.stringify(entries), { headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // ─── TOTP 管理接口 (/api/account/totp/...) ───
+
+    // GET /api/account/totp/setup — generate new TOTP secret (not yet saved)
+    if (pathParts[2] === 'totp' && pathParts[3] === 'setup' && request.method === 'GET') {
+      const dbUser = await userModel.getById(user.id);
+      if (dbUser?.totp_enabled) {
+        return new Response("TOTP is already enabled", { status: 409 });
+      }
+      const secret = generateTOTPSecret();
+      const uri = getTOTPUri(secret, user.username, 'ObexDNS');
+      return new Response(JSON.stringify({ secret, uri }), { headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // POST /api/account/totp/confirm — verify TOTP code and activate
+    if (pathParts[2] === 'totp' && pathParts[3] === 'confirm' && request.method === 'POST') {
+      const { secret, token } = await request.json() as { secret: string; token: string };
+      if (!secret || !token) return new Response("Missing secret or token", { status: 400 });
+
+      const isValid = await verifyTOTP(secret, token);
+      if (!isValid) return new Response("Invalid TOTP code", { status: 400 });
+
+      // Generate 8 recovery keys, hash them for storage, return plaintext once
+      const plaintextKeys = generateRecoveryKeys();
+      const hashedKeys = await Promise.all(plaintextKeys.map(hashRecoveryKey));
+
+      await userModel.updateTOTP(user.id, secret, hashedKeys);
+      await activityLog.record(user.id, 'totp_setup', clientIp, userAgent);
+
+      return new Response(JSON.stringify({ success: true, recovery_keys: plaintextKeys }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // DELETE /api/account/totp — disable TOTP (requires password verification)
+    if (pathParts[2] === 'totp' && !pathParts[3] && request.method === 'DELETE') {
+      const { password } = await request.json() as { password: string };
+      const dbUser = await userModel.getById(user.id);
+      if (!dbUser) return new Response("User not found", { status: 404 });
+
+      // If the user is in skip_password mode, they may not have a usable password — allow
+      // them to disable via TOTP token instead
+      if (!dbUser.totp_skip_password) {
+        if (!password || !(await verifyPassword(password, dbUser.hashed_password))) {
+          return new Response("Incorrect password", { status: 400 });
+        }
+      }
+
+      await userModel.removeTOTP(user.id);
+      await activityLog.record(user.id, 'totp_removed', clientIp, userAgent);
+      return new Response(JSON.stringify({ success: true }));
+    }
+
+    // PATCH /api/account/totp/settings — update skip_password toggle
+    if (pathParts[2] === 'totp' && pathParts[3] === 'settings' && request.method === 'PATCH') {
+      const dbUser = await userModel.getById(user.id);
+      if (!dbUser?.totp_enabled) return new Response("TOTP is not enabled", { status: 400 });
+
+      const { skip_password } = await request.json() as { skip_password: boolean };
+      await userModel.updateTOTPSettings(user.id, !!skip_password);
+      return new Response(JSON.stringify({ success: true }));
+    }
+
+    // DELETE /api/account/logs
     if (pathParts[2] === 'logs' && request.method === 'DELETE') {
       await logModel.deleteByOwner(user.id);
       return new Response(JSON.stringify({ success: true }));
     }
 
+    // DELETE /api/account/me (delete account)
     if (pathParts[2] === 'me' && request.method === 'DELETE') {
       if (RBAC.isAdmin(user)) return new Response("Administrator accounts cannot be deleted directly", { status: 400 });
       await profileModel.deleteByOwner(user.id);
@@ -61,7 +152,7 @@ export async function handleAccountRequest(request: Request, env: Env, user: Use
     }
   }
 
-  // 管理员接口 (/api/admin/...)
+  // ─── 管理员接口 (/api/admin/...) ────────────────────────────────────────────
   if (pathParts[1] === 'admin') {
     if (!RBAC.isAdmin(user)) return new Response("Forbidden", { status: 403 });
 
@@ -100,7 +191,7 @@ export async function handleAccountRequest(request: Request, env: Env, user: Use
       if (request.method === 'PATCH') {
         const body = await request.json() as Record<string, string>;
         const now = Math.floor(Date.now() / 1000);
-        const stmts = Object.entries(body).map(([key, value]) => 
+        const stmts = Object.entries(body).map(([key, value]) =>
           env.DB.prepare("INSERT INTO system_settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at").bind(key, String(value), now)
         );
         await env.DB.batch(stmts);

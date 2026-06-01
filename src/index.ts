@@ -78,7 +78,10 @@ export default {
           if (user) currentUser = user as any;
         }
 
-        const isAuthRoute = ['/api/auth/login', '/api/auth/signup'].includes(url.pathname);
+        const isAuthRoute = [
+          '/api/auth/login', '/api/auth/signup',
+          '/api/auth/totp/verify', '/api/auth/totp/recover'
+        ].includes(url.pathname);
         const isMobileConfigRoute = url.pathname.endsWith('/mobileconfig');
 
         if (!currentUser && !isAuthRoute && !isMobileConfigRoute) {
@@ -175,6 +178,13 @@ export default {
         await env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(now).run();
       } catch (e) {
         console.error("[Cron] Expired sessions cleanup failed:", e);
+      }
+
+      // 清理过期的 TOTP 临时会话
+      try {
+        await env.DB.prepare("DELETE FROM pending_totp_sessions WHERE expires_at < ?").bind(now).run();
+      } catch (e) {
+        console.error("[Cron] Expired pending TOTP sessions cleanup failed:", e);
       }
 
       // 全局日志清理 (高效 SQL)
