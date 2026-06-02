@@ -30,10 +30,12 @@ import {
   Eye,
   EyeOff,
   ExternalLink,
+  Terminal,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { clsx } from "clsx";
 import { getPresetRegions, type RegionConfigItem } from "../config/regions";
+import { generateMobileConfig } from "../utils/mobileconfig";
 
 interface SetupViewProps {
   profileId: string;
@@ -49,6 +51,7 @@ interface DebugInfo {
   asOrganization: string;
   connectedProfileId?: string;
   regions?: Record<string, RegionConfigItem>;
+  substituteDomain?: string;
 }
 
 // 移动端适配 Hook
@@ -73,8 +76,8 @@ export const SetupView: React.FC<SetupViewProps> = ({
   const dohUrl = `${window.location.origin}/${profileKey}`;
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [pagesDevIp, setPagesDevIp] = useState<string | null>(null);
-  const [pagesDevIpv6, setPagesDevIpv6] = useState<string | null>(null);
+  const [substituteDomainIp, setSubstituteDomainIp] = useState<string | null>(null);
+  const [substituteDomainIpv6, setSubstituteDomainIpv6] = useState<string | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string>("APAC");
   const [showIp, setShowIp] = useState(false);
   const [serverRegions, setServerRegions] = useState<
@@ -105,16 +108,16 @@ export const SetupView: React.FC<SetupViewProps> = ({
     });
   };
 
-  const resolvePagesDev = async () => {
+  const resolveSubstituteDomain = async (domain: string) => {
     try {
       const res = await fetch(
-        "https://cloudflare-dns.com/dns-query?name=pages.dev&type=A",
+        `https://1.1.1.1/dns-query?name=${domain}&type=A`,
         {
           headers: { Accept: "application/dns-json" },
         },
       );
       const res6 = await fetch(
-        "https://cloudflare-dns.com/dns-query?name=pages.dev&type=AAAA",
+        `https://1.1.1.1/dns-query?name=${domain}&type=AAAA`,
         {
           headers: { Accept: "application/dns-json" },
         },
@@ -122,13 +125,15 @@ export const SetupView: React.FC<SetupViewProps> = ({
       const data = await res.json();
       const data6 = await res6.json();
       if (data.Answer && data.Answer.length > 0) {
-        setPagesDevIp(data.Answer[0].data);
+        const aRecord = data.Answer.find((a: any) => a.type === 1);
+        if (aRecord) setSubstituteDomainIp(aRecord.data);
       }
       if (data6.Answer && data6.Answer.length > 0) {
-        setPagesDevIpv6(data6.Answer[0].data);
+        const aaaaRecord = data6.Answer.find((a: any) => a.type === 28);
+        if (aaaaRecord) setSubstituteDomainIpv6(aaaaRecord.data);
       }
     } catch (e) {
-      console.error("Failed to resolve pages.dev", e);
+      console.error(`Failed to resolve ${domain}`, e);
     }
   };
 
@@ -139,6 +144,9 @@ export const SetupView: React.FC<SetupViewProps> = ({
       const debugRes = await fetch("/api/debug");
       const debugData = await debugRes.json();
       setDebugInfo(debugData);
+
+      const domainToResolve = debugData.substituteDomain || "pages.dev";
+      resolveSubstituteDomain(domainToResolve);
 
       if (debugData.regions) {
         const enriched: Record<string, RegionConfigItem> = {};
@@ -175,23 +183,26 @@ export const SetupView: React.FC<SetupViewProps> = ({
 
   useEffect(() => {
     handleVerify();
-    resolvePagesDev();
   }, []);
 
   const currentIps = useMemo(() => {
     const region = allRegions[selectedRegion] || OTHER_REGION;
     const baseIps = [...region.ips];
-    if (pagesDevIpv6) {
+    const domain = debugInfo?.substituteDomain || "pages.dev";
+    if (substituteDomainIpv6) {
       baseIps.unshift({
-        ip: pagesDevIpv6,
-        area: t("setup.dynamicFromPagesDevV6"),
+        ip: substituteDomainIpv6,
+        area: t("setup.dynamicFromDomainV6", { domain }),
       });
     }
-    if (pagesDevIp) {
-      baseIps.unshift({ ip: pagesDevIp, area: t("setup.dynamicFromPagesDev") });
+    if (substituteDomainIp) {
+      baseIps.unshift({
+        ip: substituteDomainIp,
+        area: t("setup.dynamicFromDomain", { domain }),
+      });
     }
     return baseIps;
-  }, [selectedRegion, allRegions, pagesDevIp, i18n.language]);
+  }, [selectedRegion, allRegions, substituteDomainIp, substituteDomainIpv6, debugInfo, i18n.language]);
 
   return (
     <div
@@ -423,9 +434,16 @@ export const SetupView: React.FC<SetupViewProps> = ({
                   intent={Intent.PRIMARY}
                   text={t("setup.downloadConfig")}
                   icon="download"
-                  onClick={() =>
-                    (window.location.href = `/api/profiles/${profileId}/mobileconfig`)
-                  }
+                  onClick={() => {
+                    const xml = generateMobileConfig(profileKey, "Obex", window.location.origin);
+                    const blob = new Blob([xml], { type: "application/x-apple-aspen-config" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `obex-${profileKey}.mobileconfig`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
                 />
               </div>
               <p className="text-[10px] opacity-50 mt-4! text-center">
@@ -483,6 +501,44 @@ export const SetupView: React.FC<SetupViewProps> = ({
                 <li>{t("setup.windowsStep3")}</li>
                 <li>{t("setup.windowsStep4")}</li>
               </ol>
+            </div>
+          }
+        />
+
+        <Tab
+          id="linux"
+          title={
+            <span>
+              <Terminal size={16} className="inline mr-2" />
+              {t("setup.linux")}
+            </span>
+          }
+          panel={
+            <div className="space-y-4 md:ml-4 mt-4 md:mt-0">
+              <H5 className="font-bold">{t("setup.linuxTitle")}</H5>
+              <p className="text-sm">{t("setup.linuxDesc")}</p>
+              
+              <div className="mt-4">
+                <p className="text-sm font-bold mb-2">{t("setup.linuxStep1")}</p>
+                <div className="relative group">
+                  <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto text-xs font-mono border border-gray-200 dark:border-gray-700">
+                    <code>{`curl -sL "${window.location.origin}/setup.sh?key=${profileKey}&origin=${window.location.origin}" | sudo bash`}</code>
+                  </pre>
+                  <Button
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    icon="duplicate"
+                    minimal
+                    small
+                    onClick={() => {
+                      copyToClipboard(`curl -sL "${window.location.origin}/setup.sh?key=${profileKey}&origin=${window.location.origin}" | sudo bash`);
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <p className="text-sm font-bold">{t("setup.linuxStep2")}</p>
+              </div>
             </div>
           }
         />
