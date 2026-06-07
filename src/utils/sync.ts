@@ -52,10 +52,10 @@ export async function syncProfileLists(profileId: string, env: Env, ctx: Executi
     let domainArray = Array.from(allDomains);
 
     if (domainArray.length > 0) {
-      // 限制最大容量：D1 行大小限制为 1MB，超过约 580000 个域名会导致布隆过滤器超出 1MB 从而写入失败
-      if (domainArray.length > 500000) {
-        console.warn(`[Sync] Profile ${profileId} has too many domains (${domainArray.length}). Capping at 500,000 to fit D1 1MB limit.`);
-        domainArray = domainArray.slice(0, 500000);
+      // 内存安全上限：尽管 D1 存储通过分块突破了限制，但过大依然会引起 Worker 内存溢出
+      if (domainArray.length > 5000000) {
+        console.warn(`[Sync] Profile ${profileId} has too many domains (${domainArray.length}). Capping at 5,000,000 for memory safety.`);
+        domainArray = domainArray.slice(0, 5000000);
       }
 
       // 根据提取到的所有拦截域名，构建假阳性率为 0.1% 的高精度布隆过滤器
