@@ -5,6 +5,7 @@ import { pipeline } from "../pipeline";
 import { syncProfileLists } from "../utils/sync";
 import { LogModel } from "../models/log";
 import { ProfileModel } from "../models/profile";
+import { generateId } from "../lib/auth";
 
 export async function handleProfilesRequest(request: Request, env: Env, user: User | null, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
@@ -26,7 +27,7 @@ export async function handleProfilesRequest(request: Request, env: Env, user: Us
       const existing = await profileModel.findByName(user.id, body.name);
       if (existing) return new Response("The profile name already exists", { status: 400 });
 
-      const newId = Math.random().toString(36).substring(2, 8);
+      const newId = generateId(6);
       const defaultSettings: ProfileSettings = {
         upstream: ["https://security.cloudflare-dns.com/dns-query"],
         ecs: { enabled: true, use_client_ip: true },
@@ -77,7 +78,7 @@ export async function handleProfilesRequest(request: Request, env: Env, user: Us
 
     // POST /api/profiles/:id/rotate_key
     if (pathParts[3] === 'rotate_key' && request.method === 'POST') {
-      const newKey = Math.random().toString(36).substring(2, 8) + Math.random().toString(36).substring(2, 8); // 12 chars
+      const newKey = generateId(12);
       await profileModel.rotateKey(profileId, newKey);
       ctx.waitUntil(pipeline.clearCache(profileId));
       return new Response(JSON.stringify({ profile_key: newKey }), { headers: { 'Content-Type': 'application/json' } });
