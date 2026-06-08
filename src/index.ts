@@ -179,8 +179,27 @@ export default {
       try {
         let response = await (env as any).ASSETS.fetch(request);
         if (response.status === 404) {
-          return await (env as any).ASSETS.fetch(new Request(url.origin + '/', request));
+          response = await (env as any).ASSETS.fetch(new Request(url.origin + '/', request));
         }
+
+        const contentType = response.headers.get('Content-Type') || '';
+        if (contentType.includes('text/html')) {
+          let configStr = "{}";
+          try {
+             const upstreams = env.PRESET_UPSTREAMS ? JSON.parse(env.PRESET_UPSTREAMS) : null;
+             const filters = env.PRESET_EXTERNAL_FILTERS ? JSON.parse(env.PRESET_EXTERNAL_FILTERS) : null;
+             configStr = JSON.stringify({ upstreams, filters });
+          } catch (e) { }
+          
+          return new HTMLRewriter()
+            .on('head', {
+              element(element) {
+                element.prepend(`<script>window.OBEX_CONFIG = ${configStr};</script>`, { html: true });
+              }
+            })
+            .transform(response);
+        }
+
         return response;
       } catch (e) {
         return new Response("Asset Fetch Error", { status: 500 });

@@ -61,3 +61,12 @@ INACTIVITY_THRESHOLD_DAYS=180
 THROTTLE_ACTIVE_SEC=3600
 # Minimum interval between automated blocklist profile syncs (in seconds)
 SYNC_PROFILE_INTERVAL_SEC=86400
+
+# Preset Upstream Services
+PRESET_UPSTREAMS='[{"i18nKey":"settings.presetCloudflareSecurity","url":"https://security.cloudflare-dns.com/dns-query"},{"i18nKey":"settings.presetCloudflareFamilies","url":"https://family.cloudflare-dns.com/dns-query"},{"i18nKey":"settings.presetQuad9","url":"https://dns.quad9.net/dns-query"},{"i18nKey":"settings.presetQuad9Ecs","url":"https://dns11.quad9.net/dns-query"},{"i18nKey":"settings.presetControlDFree","url":"https://freedns.controld.com/no-ads-malware-typo"},{"i18nKey":"settings.presetControlDUncensored","url":"https://freedns.controld.com/uncensored"},{"i18nKey":"settings.presetAdGuard","url":"https://dns.adguard-dns.com/dns-query"},{"i18nKey":"settings.presetAdGuardFamily","url":"https://family.adguard-dns.com/dns-query"},{"label":"Cloudflare (1.1.1.1)","url":"1.1.1.1"},{"label":"Cloudflare Security (1.1.1.2)","url":"1.1.1.2"},{"label":"Quad9 (9.9.9.9)","url":"9.9.9.9:9953"},{"label":"Google (8.8.8.8)","url":"8.8.8.8"}]'
+
+# Preset External Filters
+PRESET_EXTERNAL_FILTERS='[{"i18nKey":"filtering.presetOisdBig","url":"https://big.oisd.nl"},{"i18nKey":"filtering.presetOisdNsfw","url":"https://nsfw.oisd.nl"},{"i18nKey":"filtering.presetAdGuard","url":"https://adguardteam.github.io/AdguardFilters/BaseFilter/sections/adservers.txt"},{"i18nKey":"filtering.presetStevenBlack","url":"https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"}]'
+
+# Bloom Filter false positive rate
+BLOOM_FALSE_POSITIVE_RATE=0.0001

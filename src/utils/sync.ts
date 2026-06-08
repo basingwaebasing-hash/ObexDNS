@@ -58,8 +58,8 @@ export async function syncProfileLists(profileId: string, env: Env, ctx: Executi
         domainArray = domainArray.slice(0, 5000000);
       }
 
-      // 根据提取到的所有拦截域名，构建假阳性率为 0.01% (万分之一) 的高精度布隆过滤器
-      const falsePositiveRate = 0.0001;
+      // 根据提取到的所有拦截域名，构建假阳性率为 0.01% 的高精度布隆过滤器
+      const falsePositiveRate = Number(env.BLOOM_FALSE_POSITIVE_RATE) || 0.0001;
       const bloom = BloomFilter.create(domainArray.length, falsePositiveRate);
       domainArray.forEach(d => bloom.add(d));
       const binary = bloom.toUint8Array();
