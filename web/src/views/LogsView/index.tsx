@@ -53,6 +53,16 @@ export const LogsView: React.FC<LogsViewProps> = ({ profileId, onQuickAction }) 
         setLogs((prev) => [...prev, ...data]);
         setHasMore(data.length >= 50);
       }
+
+      if (data && data.length > 0) {
+        const domains = Array.from(new Set(data.map((log: LogEntry) => log.domain)));
+        if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: "PREFETCH_ICONS",
+            domains,
+          });
+        }
+      }
     } catch (e) {
       console.error(e);
     } finally {
