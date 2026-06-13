@@ -9,12 +9,45 @@ import { SetupHeader } from "./components/SetupHeader";
 import { VerifyConnectionCard } from "./components/VerifyConnectionCard";
 import { DohUrlCard } from "./components/DohUrlCard";
 import { SetupTabs } from "./components/SetupTabs";
+import { AccessPointDrawer } from "./components/AccessPointDrawer";
+import type { AccessPoint } from "../../types/auth";
 
 export const SetupView: React.FC<SetupViewProps> = ({ profileId, profileKey, toasterRef }) => {
   const isMobile = useIsMobile();
   const { t, i18n } = useTranslation();
   const presetRegions = useMemo(() => getPresetRegions(t), [i18n.language, t]);
-  const dohUrl = `${window.location.origin}/${profileKey}`;
+  
+  const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
+  const [loadingAccessPoints, setLoadingAccessPoints] = useState(false);
+  const [isAccessPointDrawerOpen, setIsAccessPointDrawerOpen] = useState(false);
+  const [selectedApId, setSelectedApId] = useState<string | null>(null);
+
+  const fetchAccessPoints = async () => {
+    setLoadingAccessPoints(true);
+    try {
+      const res = await fetch(`/api/profiles/${profileId}/access_points`);
+      if (res.ok) {
+        setAccessPoints(await res.json());
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingAccessPoints(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAccessPoints();
+  }, [profileId]);
+
+  const activeAp = useMemo(() => {
+    if (accessPoints.length === 0) return null;
+    return accessPoints.find(ap => ap.id === selectedApId) || accessPoints[0];
+  }, [accessPoints, selectedApId]);
+
+  const activeToken = activeAp ? activeAp.token : profileKey;
+  const activeName = activeAp ? activeAp.name : undefined;
+  const dohUrl = `${window.location.origin}/${activeToken}`;
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [substituteDomainIp, setSubstituteDomainIp] = useState<string | null>(null);
@@ -43,26 +76,41 @@ export const SetupView: React.FC<SetupViewProps> = ({ profileId, profileKey, toa
   };
 
   const resolveSubstituteDomain = async (domain: string) => {
-    try {
-      const res = await fetch(`https://1.1.1.1/dns-query?name=${domain}&type=A`, {
-        headers: { Accept: "application/dns-json" },
-      });
-      const res6 = await fetch(`https://1.1.1.1/dns-query?name=${domain}&type=AAAA`, {
-        headers: { Accept: "application/dns-json" },
-      });
-      const data = await res.json();
-      const data6 = await res6.json();
-      if (data.Answer && data.Answer.length > 0) {
-        const aRecord = data.Answer.find((a: any) => a.type === 1);
-        if (aRecord) setSubstituteDomainIp(aRecord.data);
+    const tryResolve = async (server: string, type: string, typeNum: number): Promise<string | null> => {
+      try {
+        const res = await fetch(`https://${server}/dns-query?name=${domain}&type=${type}`, {
+          headers: { Accept: "application/dns-json" },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.Answer && data.Answer.length > 0) {
+            const record = data.Answer.find((a: any) => a.type === typeNum);
+            if (record?.data) return record.data;
+          }
+        }
+      } catch (e) {
+        console.warn(`Client-side DNS query failed for ${domain} (${type}) via ${server}:`, e);
       }
-      if (data6.Answer && data6.Answer.length > 0) {
-        const aaaaRecord = data6.Answer.find((a: any) => a.type === 28);
-        if (aaaaRecord) setSubstituteDomainIpv6(aaaaRecord.data);
-      }
-    } catch (e) {
-      console.error(`Failed to resolve ${domain}`, e);
+      return null;
+    };
+
+    const servers = ["cloudflare-dns.com", "1.1.1.1"];
+
+    // Try resolving A record
+    let ipA: string | null = null;
+    for (const server of servers) {
+      ipA = await tryResolve(server, "A", 1);
+      if (ipA) break;
     }
+    if (ipA) setSubstituteDomainIp(ipA);
+
+    // Try resolving AAAA record
+    let ipAAAA: string | null = null;
+    for (const server of servers) {
+      ipAAAA = await tryResolve(server, "AAAA", 28);
+      if (ipAAAA) break;
+    }
+    if (ipAAAA) setSubstituteDomainIpv6(ipAAAA);
   };
 
   const handleVerify = async () => {
@@ -74,7 +122,28 @@ export const SetupView: React.FC<SetupViewProps> = ({ profileId, profileKey, toa
       setDebugInfo(debugData);
 
       const domainToResolve = debugData.substituteDomain || "pages.dev";
-      resolveSubstituteDomain(domainToResolve);
+      
+      try {
+        const substituteRes = await fetch("/api/substitute");
+        if (substituteRes.ok) {
+          const substituteData = await substituteRes.json();
+          if (substituteData.ip) {
+            setSubstituteDomainIp(substituteData.ip);
+          }
+          if (substituteData.ipv6) {
+            setSubstituteDomainIpv6(substituteData.ipv6);
+          }
+          
+          if (!substituteData.ip || !substituteData.ipv6) {
+            resolveSubstituteDomain(domainToResolve);
+          }
+        } else {
+          resolveSubstituteDomain(domainToResolve);
+        }
+      } catch (e) {
+        console.warn("Backend substitute lookup failed, falling back to client-side DNS lookup", e);
+        resolveSubstituteDomain(domainToResolve);
+      }
 
       if (debugData.regions) {
         const enriched: Record<string, RegionConfigItem> = {};
@@ -150,15 +219,35 @@ export const SetupView: React.FC<SetupViewProps> = ({ profileId, profileKey, toa
         setShowIp={setShowIp}
       />
 
-      <DohUrlCard dohUrl={dohUrl} copyToClipboard={copyToClipboard} isMobile={isMobile} />
+      <DohUrlCard 
+        dohUrl={dohUrl} 
+        accessPointName={activeName}
+        copyToClipboard={copyToClipboard} 
+        isMobile={isMobile} 
+        onManageAccessPoints={() => setIsAccessPointDrawerOpen(true)}
+        accessPoints={accessPoints}
+        selectedApId={activeAp?.id || null}
+        onSelectAp={setSelectedApId}
+      />
 
       <SetupTabs
         isMobile={isMobile}
         copyToClipboard={copyToClipboard}
-        profileKey={profileKey}
+        profileKey={activeToken}
         allRegions={allRegions}
         selectedRegion={selectedRegion}
         currentIps={currentIps}
+      />
+
+      <AccessPointDrawer
+        isOpen={isAccessPointDrawerOpen}
+        onClose={() => setIsAccessPointDrawerOpen(false)}
+        profileId={profileId}
+        isMobile={isMobile}
+        accessPoints={accessPoints}
+        loading={loadingAccessPoints}
+        onRefresh={fetchAccessPoints}
+        toasterRef={toasterRef as any}
       />
     </div>
   );

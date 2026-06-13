@@ -1,6 +1,6 @@
 import { Env, User, ExecutionContext } from "../types";
 import { RBAC } from "../lib/rbac";
-import { generateId, createBlankSessionCookie } from "../lib/auth";
+import { generateId, createBlankRefreshTokenCookie, readRefreshTokenCookie } from "../lib/auth";
 import { hashPassword, verifyPassword } from "../utils/crypto";
 import { generateTOTPSecret, getTOTPUri, generateRecoveryKeys, hashRecoveryKey, verifyTOTP } from "../lib/totp";
 import { UserModel } from "../models/user";
@@ -8,6 +8,8 @@ import { ProfileModel } from "../models/profile";
 import { LogModel } from "../models/log";
 import { ActivityLogModel } from "../models/activityLog";
 import { SystemSettingsModel } from "../models/systemSettings";
+
+const PASSWORD_REGEX = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{12,100}$/;
 
 export async function handleAccountRequest(request: Request, env: Env, user: User, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
@@ -27,7 +29,7 @@ export async function handleAccountRequest(request: Request, env: Env, user: Use
       const dbUser = await userModel.getById(user.id);
       return new Response(JSON.stringify({
         id: user.id,
-        username: user.username,
+        username: dbUser?.username || "",
         role: user.role,
         totp_enabled: !!(dbUser?.totp_enabled),
         totp_skip_password: !!(dbUser?.totp_skip_password),
@@ -52,7 +54,7 @@ export async function handleAccountRequest(request: Request, env: Env, user: Use
     // POST /api/account/password (password change)
     if (pathParts[2] === 'password' && request.method === 'POST') {
       const { oldPassword, totpTokenHash, totpSalt, newPassword } = await request.json() as any;
-      if (!newPassword || newPassword.length < 8 || !/(?=.*[a-zA-Z])(?=.*[0-9])/.test(newPassword)) {
+      if (!newPassword || !PASSWORD_REGEX.test(newPassword)) {
         return new Response("Password format error", { status: 400 });
       }
       const dbUser = await userModel.getById(user.id);
@@ -101,8 +103,8 @@ export async function handleAccountRequest(request: Request, env: Env, user: Use
       const sessionModel = new SessionModel(env.DB);
       const sessions = await sessionModel.getSessionsByUser(user.id);
       
-      const { readSessionCookie } = await import("../lib/auth");
-      const currentSessionId = readSessionCookie(request.headers.get("Cookie"));
+      const cookieHeader = request.headers.get("Cookie") || "";
+      const currentSessionId = readRefreshTokenCookie(cookieHeader);
       
       const sessionData = sessions.map(s => ({
         ...s,
@@ -124,15 +126,15 @@ export async function handleAccountRequest(request: Request, env: Env, user: Use
         return new Response("Forbidden", { status: 403 });
       }
       
-      const { invalidateSession, readSessionCookie, createBlankSessionCookie } = await import("../lib/auth");
+      const { invalidateSession } = await import("../lib/auth");
       await invalidateSession(env, targetSessionId);
       await activityLog.record(user.id, 'session_revoked', clientIp, userAgent);
       
       // If revoking current session, clear cookie
-      const currentSessionId = readSessionCookie(request.headers.get("Cookie"));
+      const currentSessionId = readRefreshTokenCookie(request.headers.get("Cookie") || "");
       if (targetSessionId === currentSessionId) {
         return new Response(JSON.stringify({ success: true, is_current: true }), {
-          headers: { "Set-Cookie": createBlankSessionCookie(), "Content-Type": "application/json" }
+          headers: { "Set-Cookie": createBlankRefreshTokenCookie(), "Content-Type": "application/json" }
         });
       }
       
@@ -150,7 +152,7 @@ export async function handleAccountRequest(request: Request, env: Env, user: Use
         return new Response("TOTP is already enabled", { status: 409 });
       }
       const secret = generateTOTPSecret();
-      const uri = getTOTPUri(secret, user.username, 'ObexDNS');
+      const uri = getTOTPUri(secret, dbUser?.username || 'user', 'ObexDNS');
       return new Response(JSON.stringify({ secret, uri }), { headers: { 'Content-Type': 'application/json' } });
     }
 
@@ -210,12 +212,15 @@ export async function handleAccountRequest(request: Request, env: Env, user: Use
     }
 
     // DELETE /api/account/me (delete account)
-    if (pathParts[2] === 'me' && request.method === 'DELETE') {
-      if (RBAC.isAdmin(user)) return new Response("Administrator accounts cannot be deleted directly", { status: 400 });
-      await profileModel.deleteByOwner(user.id);
+    if (pathParts[2] === 'delete' && request.method === 'POST') {
+      const { invalidateSession } = await import("../lib/auth");
+      const cookieHeader = request.headers.get("Cookie") || "";
+      const sessionId = readRefreshTokenCookie(cookieHeader);
+      if (sessionId) await invalidateSession(env, sessionId);
       await userModel.delete(user.id);
-      const blankCookie = createBlankSessionCookie();
-      return new Response(JSON.stringify({ success: true }), { headers: { "Set-Cookie": blankCookie } });
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { "Set-Cookie": createBlankRefreshTokenCookie(), "Content-Type": "application/json" }
+      });
     }
   }
 
@@ -233,7 +238,7 @@ export async function handleAccountRequest(request: Request, env: Env, user: Use
         if (!username || !/^[a-zA-Z0-9]{5,15}$/.test(username)) {
           return new Response("Invalid username format", { status: 400 });
         }
-        if (!password || password.length < 8 || !/(?=.*[a-zA-Z])(?=.*[0-9])/.test(password)) {
+        if (!password || !PASSWORD_REGEX.test(password)) {
           return new Response("Password format error", { status: 400 });
         }
         const hashedPassword = await hashPassword(password);

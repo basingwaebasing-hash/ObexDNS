@@ -4,6 +4,7 @@ export interface Env {
   DB: D1Database;
   ASSETS: any;
   SESSION_EXPIRATION_DAYS?: string | number;
+  ACCESS_TOKEN_EXPIRATION_MINUTES?: string | number;
   SESSION_GEO_DISTANCE_KM?: string | number;
   PREAUTH_TTL_SECONDS?: string | number;
   BLOOM_MEM_TTL?: string | number;
@@ -109,6 +110,7 @@ export interface ResolutionResult {
 export interface ResolutionLog {
   id?: number;
   profile_id: string;
+  access_point_id?: string;
   timestamp: number;
   client_ip: string;
   geo_country: string;
@@ -127,7 +129,18 @@ export interface ExecutionContext extends CFExecutionContext {}
 
 export interface Context {
   profileId: string;
+  accessPointId?: string;
+  accessPointName?: string;
   startTime: number;
   env: Env;
   ctx: ExecutionContext;
+}
+
+export interface AccessPoint {
+  id: string;
+  profile_id: string;
+  name: string;
+  token: string;
+  created_at: number;
+  updated_at: number;
 }
