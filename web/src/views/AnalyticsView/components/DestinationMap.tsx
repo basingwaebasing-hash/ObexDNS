@@ -66,11 +66,15 @@ export const DestinationMap: React.FC<DestinationMapProps> = ({ destinations }) 
         const geo = JSON.parse(d.dest_geoip);
         if (geo && geo.country_code) {
           const code = geo.country_code.toUpperCase();
-          map[code] = {
-            count: d.count,
-            name: geo.country,
-            countryCode: code
-          };
+          if (map[code]) {
+            map[code].count += d.count;
+          } else {
+            map[code] = {
+              count: d.count,
+              name: geo.country,
+              countryCode: code
+            };
+          }
         }
       } catch (e) {
         console.error("Failed to parse dest_geoip", e);
