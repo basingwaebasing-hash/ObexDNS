@@ -110,7 +110,7 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({
                   r={r + 3}
                   fill={`var(--map-color-${fillLevel})`}
                   opacity={0.4}
-                  className="animate-ping"
+                  className="animate-ping map-marker-circle"
                 />
                 <circle
                   r={r}
@@ -118,6 +118,7 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({
                   stroke="var(--map-stroke)"
                   strokeWidth={0.75}
                   style={{ cursor: "pointer" }}
+                  className="map-marker-circle"
                 />
               </>
             ) : (

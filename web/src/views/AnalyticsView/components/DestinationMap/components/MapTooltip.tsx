@@ -92,15 +92,20 @@ export const MapTooltip: React.FC<MapTooltipProps> = ({
     if (!isPinned) return;
     const handleOutsideClick = (e: MouseEvent) => {
       if (tooltipRef.current && !tooltipRef.current.contains(e.target as Node)) {
-        onClose();
+        const target = e.target as HTMLElement;
+        const isGeography = target.classList.contains("rsm-geography") || target.closest(".rsm-geography");
+        const isMarker = target.classList.contains("map-marker-circle") || target.closest(".map-marker-circle");
+        if (!isGeography && !isMarker) {
+          onClose();
+        }
       }
     };
     const timer = setTimeout(() => {
-      document.addEventListener("click", handleOutsideClick);
+      document.addEventListener("click", handleOutsideClick, true);
     }, 0);
     return () => {
       clearTimeout(timer);
-      document.removeEventListener("click", handleOutsideClick);
+      document.removeEventListener("click", handleOutsideClick, true);
     };
   }, [isPinned, onClose]);
 
