@@ -39,6 +39,10 @@ enabled = true
 head_sampling_rate = 0.01
 
 [vars]
+# Maximum number of access points allowed per profile
+MAX_ACCESS_POINTS_PER_PROFILE = 100
+# Maximum number of profiles allowed per user
+MAX_PROFILES_PER_USER = 10
 # Used to resolve DoH domains
 SUBSTITUTE_DOMAIN="www.okx.com"
 IP_REGION_CN = """
