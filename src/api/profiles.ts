@@ -169,7 +169,8 @@ export async function handleProfilesRequest(request: Request, env: Env, user: Us
       let since: number;
       let until = Math.floor(Date.now() / 1000);
       const settings: ProfileSettings = JSON.parse(profile.settings);
-      const retentionThreshold = Math.floor(until - ((settings.log_retention_days || 30) * 24 * 3600));
+      const logRetentionDays = settings.log_retention_days !== undefined ? Number(settings.log_retention_days) : 30;
+      const retentionThreshold = Math.floor(until - (logRetentionDays * 24 * 3600));
 
       if (startParam && endParam) {
         since = Math.max(parseInt(startParam), retentionThreshold);
@@ -182,6 +183,9 @@ export async function handleProfilesRequest(request: Request, env: Env, user: Us
           case '24h': since -= 86400; break;
           case '7d': since -= 604800; break;
           case '30d': since -= 2592000; break;
+          case '180d': since -= 15552000; break;
+          case '360d': since -= 31104000; break;
+          case '720d': since -= 62208000; break;
           default: since -= 86400; break;
         }
         since = Math.max(since, retentionThreshold);
@@ -208,6 +212,9 @@ export async function handleProfilesRequest(request: Request, env: Env, user: Us
           case '24h': since = until - 86400; interval = "(timestamp/3600)*3600"; break;
           case '7d': since = until - 604800; interval = "(timestamp/86400)*86400"; break;
           case '30d': since = until - 2592000; interval = "(timestamp/86400)*86400"; break;
+          case '180d': since = until - 15552000; interval = "(timestamp/86400)*86400"; break;
+          case '360d': since = until - 31104000; interval = "(timestamp/86400)*86400"; break;
+          case '720d': since = until - 62208000; interval = "(timestamp/86400)*86400"; break;
           default: since = until - 86400; interval = "(timestamp/3600)*3600"; break;
         }
       }
