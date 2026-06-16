@@ -240,6 +240,7 @@
     "tableStatus": "状态",
     "tableReason": "原因",
     "loadedAll": "已加载全部 {{count}} 条记录",
+    "realtimeLoadMoreTip": "关闭“实时”模式以加载更多",
     "filterAccessPoint": "接入点",
     "allAccessPoint": "全部接入点",
     "details": "查询详情",

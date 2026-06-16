@@ -240,6 +240,7 @@
     "tableStatus": "狀態",
     "tableReason": "原因",
     "loadedAll": "已載入全部 {{count}} 條記錄",
+    "realtimeLoadMoreTip": "關閉「即時」模式以載入更多",
     "filterAccessPoint": "存取點",
     "allAccessPoint": "全部存取點",
     "details": "查詢詳情",

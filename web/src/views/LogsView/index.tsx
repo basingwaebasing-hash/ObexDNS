@@ -245,8 +245,10 @@ export const LogsView: React.FC<LogsViewProps> = ({ profileId, onQuickAction }) 
         <div className="p-6 flex flex-col items-center">
           {loadingMore ? (
             <Spinner size={16} />
+          ) : realtimeRefresh ? (
+            logs.length > 0 && <span className="text-[10px] opacity-30 italic">{t("logs.realtimeLoadMoreTip")}</span>
           ) : (
-            !realtimeRefresh && !hasMore &&
+            !hasMore &&
             logs.length > 0 && <span className="text-[10px] opacity-30 italic">{t("logs.loadedAll", { count: logs.length })}</span>
           )}
         </div>
