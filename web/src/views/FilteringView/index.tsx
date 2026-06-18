@@ -196,7 +196,7 @@ export const FilteringView: React.FC<FilteringViewProps> = ({ profileId, toaster
               large
             />
           </ButtonGroup>
-          <p className="bp6-text-muted mt-2">{t("filtering.subtitle")}</p>
+          <p className="bp6-text-muted mt-2!">{t("filtering.subtitle")}</p>
         </div>
         <Button
           icon={<RefreshCw size={16} />}

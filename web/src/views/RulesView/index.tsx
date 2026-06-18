@@ -223,7 +223,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ profileId, prefill, onPref
                 large
               />
             </ButtonGroup>
-            <p className="bp6-text-muted mt-2">{t("rules.subtitle")}</p>
+            <p className="bp6-text-muted mt-2!">{t("rules.subtitle")}</p>
           </div>
         </div>
       </div>
