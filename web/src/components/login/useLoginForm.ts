@@ -191,6 +191,8 @@ export const useLoginForm = ({
         const msg = await res.text();
         if (isPasswordLeaked(res, msg)) {
           setError(t("auth.passwordLeaked"));
+        } else if (msg === "geolocation_missing") {
+          setError(t("auth.geolocationRequired"));
         } else {
           setError(msg || t("auth.authFailed"));
         }

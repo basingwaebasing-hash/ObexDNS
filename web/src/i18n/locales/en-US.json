@@ -75,6 +75,7 @@
     "skip": "Skip",
     "showPassword": "Show password",
     "hidePassword": "Hide password",
+    "geolocationRequired": "Geolocation failed. Please try re-entering.",
     "unauthorizedDefault": "Your session has ended. Please log in again.",
     "unauthorizedGeo": "Session invalidated due to geographic location change (exceeded distance limit).",
     "unauthorizedExpired": "Your session has expired. Please log in again.",

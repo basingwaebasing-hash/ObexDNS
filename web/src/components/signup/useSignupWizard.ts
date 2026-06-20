@@ -245,6 +245,8 @@ export const useSignupWizard = ({
           setError(t("auth.passwordLeaked"));
         } else if (msg === "username_exists") {
           setError(t("auth.usernameExists"));
+        } else if (msg === "geolocation_missing") {
+          setError(t("auth.geolocationRequired"));
         } else {
           setError(msg || t("auth.authFailed"));
         }

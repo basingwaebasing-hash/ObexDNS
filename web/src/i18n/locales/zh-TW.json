@@ -75,6 +75,7 @@
     "skip": "跳過",
     "showPassword": "顯示密碼",
     "hidePassword": "隱藏密碼",
+    "geolocationRequired": "地理資訊獲取失敗，請重新進入。",
     "unauthorizedDefault": "您的登入會話已失效，請重新登入。",
     "unauthorizedGeo": "檢測到地理位置變更（超出距離限制），當前會話已被強制註銷。",
     "unauthorizedExpired": "您的登入已過期，請重新登入。",

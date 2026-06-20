@@ -65,7 +65,7 @@ export async function handleAuthRegisterRequest(request: Request, env: Env): Pro
     await activityLog.record(userId, 'signup', clientIp, userAgent);
     const { latitude, longitude } = getRequestCoordinates(request);
     if (latitude === null || longitude === null) {
-      return new Response("Geolocation required. Please allow location access.", { status: 400 });
+      return new Response("geolocation_missing", { status: 400 });
     }
     const { session, refreshToken } = await createSession(env, userId, clientIp, userAgent, latitude, longitude);
     const refreshCookie = createRefreshTokenCookie(refreshToken, env);
