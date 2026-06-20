@@ -249,6 +249,7 @@
     "allIsp": "모든 ISP",
     "filterIsp": "ISP",
     "timeRange": "시간 범위",
+    "clearFilters": "필터 초기화",
     "details": "쿼리 상세",
     "detailAccessPoint": "액세스 포인트",
     "basicInfo": "기본 정보",

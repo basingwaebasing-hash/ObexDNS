@@ -249,6 +249,7 @@
     "allIsp": "すべてのプロバイダ",
     "filterIsp": "プロバイダ",
     "timeRange": "期間",
+    "clearFilters": "フィルターをクリア",
     "details": "クエリ詳細",
     "detailAccessPoint": "アクセスポイント",
     "basicInfo": "基本情報",

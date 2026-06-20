@@ -249,6 +249,7 @@
     "allIsp": "Alle ISPs",
     "filterIsp": "ISP",
     "timeRange": "Zeitbereich",
+    "clearFilters": "Filter löschen",
     "details": "Details zur Abfrage",
     "detailAccessPoint": "Zugangspunkt",
     "basicInfo": "Basisinformationen",

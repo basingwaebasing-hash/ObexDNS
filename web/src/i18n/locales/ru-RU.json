@@ -249,6 +249,7 @@
     "allIsp": "Все провайдеры",
     "filterIsp": "Провайдер",
     "timeRange": "Временной диапазон",
+    "clearFilters": "Очистить фильтры",
     "details": "Детали запроса",
     "detailAccessPoint": "Точка доступа",
     "basicInfo": "Базовая информация",

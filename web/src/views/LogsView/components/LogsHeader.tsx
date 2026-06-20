@@ -65,6 +65,15 @@ export const LogsHeader: React.FC<LogsHeaderProps> = ({
   const { t } = useTranslation();
   const [isCollapsed, setIsCollapsed] = useState(true);
 
+  const hasActiveFilters = statusFilter !== null || accessPointIdFilter !== null || destCountryFilter !== null || ispFilter !== null;
+
+  const handleClearFilters = () => {
+    setStatusFilter(null);
+    setAccessPointIdFilter(null);
+    setDestCountryFilter(null);
+    setIspFilter(null);
+  };
+
   return (
     <div className={`p-4 ${isMobile && isCollapsed ? "space-y-0" : "space-y-4"} shrink-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800`}>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -137,6 +146,14 @@ export const LogsHeader: React.FC<LogsHeaderProps> = ({
       {(!isMobile || !isCollapsed) && (
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <Button
+                icon="filter-remove"
+                onClick={handleClearFilters}
+                variant="minimal"
+                title={t("logs.clearFilters")}
+              />
+            )}
             <StatusFilter
               statusFilter={statusFilter}
               setStatusFilter={setStatusFilter}

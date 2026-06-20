@@ -249,6 +249,7 @@
     "allIsp": "Tous les FAI",
     "filterIsp": "FAI",
     "timeRange": "Période",
+    "clearFilters": "Effacer les filtres",
     "details": "Détails de la requête",
     "detailAccessPoint": "Point d'accès",
     "basicInfo": "Informations de base",
