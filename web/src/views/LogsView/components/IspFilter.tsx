@@ -37,7 +37,7 @@ export const IspFilter: React.FC<IspFilterProps> = ({
         <MenuItem
           key={isp.name}
           icon={ispFilter === isp.name ? "tick" : undefined}
-          text={`${isp.name} (${isp.count})`}
+          text={`${isp.name} (${isp.count.toLocaleString()})`}
           onClick={() => setIspFilter(isp.name)}
         />
       ))}
