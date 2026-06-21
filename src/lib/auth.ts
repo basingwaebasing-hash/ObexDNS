@@ -41,7 +41,8 @@ export type {
 export {
   createPreauthSession,
   validatePreauthSession,
-  invalidatePreauthSession
+  invalidatePreauthSession,
+  recordFailedPreauthAttempt
 } from "./preauth";
 
 /**
