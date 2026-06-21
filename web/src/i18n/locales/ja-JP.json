@@ -383,7 +383,7 @@
     "title": "アカウント設定",
     "subtitle": "セキュリティ資格情報とシステムユーザーを管理します。",
     "roleAdmin": "システム管理者",
-    "roleUser": "一般ユーザー",
+    "roleUser": "ユーザー",
     "personalInfo": "個人情報",
     "username": "ユーザー名",
     "userId": "ユーザー ID",

@@ -139,7 +139,7 @@ export async function handleProfilesCoreRequest(
       latency: result.latency,
       timings: result.timings,
       client_ip: request.headers.get("CF-Connecting-IP") || "127.0.0.1",
-      geo_country: (request as any).cf?.country || "UNKNOWN",
+      geo_country: (request as any).cf?.country || request.headers.get("CF-IPCountry") || "UNKNOWN",
       success: true 
     }), { headers: { 'Content-Type': 'application/json' } });
   }

@@ -13,6 +13,7 @@ export interface AuthConfig {
   turnstile_site_key?: string | null;
   turnstile_enabled_login?: boolean;
   turnstile_enabled_signup?: boolean;
+  optional_session_expiration_days?: number;
 }
 
 export interface PreloginPayload {
@@ -23,6 +24,7 @@ export interface PreloginPayload {
 export interface PreloginResponse {
   requires_password: boolean;
   requires_totp: boolean;
+  password_version?: number;
 }
 
 export interface LoginPayload {
@@ -30,10 +32,12 @@ export interface LoginPayload {
   recoveryKey?: string;
   totpTokenHash?: string;
   totpSalt?: string;
+  keepLoggedIn?: boolean;
 }
 
 export interface LoginResponse {
   accessToken: string;
+  needsMigration?: boolean;
 }
 
 export interface SignupPayload {

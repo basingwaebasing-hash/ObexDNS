@@ -55,20 +55,20 @@ export async function handleAuthRegisterRequest(request: Request, env: Env): Pro
     return new Response("username_exists", { status: 400 });
   }
 
-  const hashedPassword = await hashPassword(password);
+  const hashedPassword = await hashPassword(password, 2);
   const userId = generateId(15);
   const cf = (request as any).cf;
   const timezone = cf?.timezone || request.headers.get("CF-Timezone") || null;
   try {
     const role = (await userModel.isEmpty()) ? 'admin' : 'user';
-    await userModel.create({ id: userId, username, passwordHash: hashedPassword, role, timezone });
+    await userModel.create({ id: userId, username, passwordHash: hashedPassword, role, timezone, passwordVersion: 2 });
     await activityLog.record(userId, 'signup', clientIp, userAgent);
     const { latitude, longitude } = getRequestCoordinates(request);
     if (latitude === null || longitude === null) {
       return new Response("geolocation_missing", { status: 400 });
     }
-    const { session, refreshToken } = await createSession(env, userId, clientIp, userAgent, latitude, longitude);
-    const refreshCookie = createRefreshTokenCookie(refreshToken, env);
+    const { session, refreshToken } = await createSession(env, userId, clientIp, userAgent, latitude, longitude, false);
+    const refreshCookie = createRefreshTokenCookie(refreshToken, env, false);
     const csrfToken = generateId(32);
     const csrfCookie = createCsrfCookie(csrfToken);
     

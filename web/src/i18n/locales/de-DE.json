@@ -383,7 +383,7 @@
     "title": "Kontoeinstellungen",
     "subtitle": "Verwalten Sie Ihre Sicherheitsanmeldedaten und Systembenutzer.",
     "roleAdmin": "Systemadministrator",
-    "roleUser": "Normaler Benutzer",
+    "roleUser": "Benutzer",
     "personalInfo": "Persönliche Informationen",
     "username": "Benutzername",
     "userId": "Benutzer-ID",

@@ -118,6 +118,14 @@ export function useAuth(toasterRef: React.RefObject<OverlayToaster | null>) {
     } catch (e) {
       console.error("Logout failed", e);
     } finally {
+      if (typeof window !== "undefined" && "caches" in window) {
+        try {
+          await caches.delete("obex-dns-logs-v1");
+        } catch {}
+      }
+      try {
+        sessionStorage.removeItem("obex_session_active");
+      } catch {}
       clearCsrfToken();
       setIsLoggedIn(false);
       window.location.reload();

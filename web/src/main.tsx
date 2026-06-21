@@ -130,6 +130,14 @@ window.fetch = async function (input, init) {
   return response;
 };
 
+// Clear session-based logs cache on new session startup
+if (typeof window !== "undefined" && "caches" in window) {
+  if (!sessionStorage.getItem("obex_session_active")) {
+    caches.delete("obex-dns-logs-v1").catch(() => {});
+    sessionStorage.setItem("obex_session_active", "true");
+  }
+}
+
 createRoot(document.getElementById("root")!).render(
   <OverlaysProvider>
     <HelmetProvider>

@@ -61,8 +61,9 @@ export async function handleAuthSessionRequest(request: Request, env: Env): Prom
 
     const requires_password = !user.totp_skip_password;
     const requires_totp = !!user.totp_enabled;
+    const password_version = user.password_version ?? 1;
 
-    return new Response(JSON.stringify({ requires_password, requires_totp }), {
+    return new Response(JSON.stringify({ requires_password, requires_totp, password_version }), {
       headers: {
         "Set-Cookie": preauthCookie,
         "Content-Type": "application/json"
@@ -88,16 +89,21 @@ export async function handleAuthSessionRequest(request: Request, env: Env): Prom
     const user = await userModel.getById(userId);
     if (!user) return new Response("User not found", { status: 404 });
 
-    const { password, totpTokenHash, totpSalt, recoveryKey } = await request.json() as any;
+    const { password, totpTokenHash, totpSalt, recoveryKey, keepLoggedIn } = await request.json() as any;
 
+    let needsMigration = false;
     // 验证密码
     if (!user.totp_skip_password) {
-      const passwordValid = await verifyPassword(password, user.hashed_password);
+      const passwordValid = await verifyPassword(password, user.hashed_password, user.password_version ?? 1);
       if (!passwordValid) {
         await cacheUtils.isRateLimited(cache, `login_fail:${clientIp}`, 100, 900);
         await activityLog.record(userId, 'login_fail', clientIp, userAgent, { reason: 'wrong_password' });
         await invalidatePreauthSession(env, preauthToken);
         return new Response("Invalid password", { status: 400 });
+      }
+
+      if ((user.password_version ?? 1) === 1) {
+        needsMigration = true;
       }
     }
 
@@ -137,7 +143,7 @@ export async function handleAuthSessionRequest(request: Request, env: Env): Prom
     if (latitude === null || longitude === null) {
       return new Response("geolocation_missing", { status: 400 });
     }
-    const { session, refreshToken } = await createSession(env, userId, clientIp, userAgent, latitude, longitude);
+    const { session, refreshToken } = await createSession(env, userId, clientIp, userAgent, latitude, longitude, !!keepLoggedIn);
     const csrfToken = generateId(32);
     const csrfCookie = createCsrfCookie(csrfToken);
 
@@ -152,11 +158,11 @@ export async function handleAuthSessionRequest(request: Request, env: Env): Prom
     }, jwtKey);
 
     const headers = new Headers({ "Content-Type": "application/json" });
-    headers.append("Set-Cookie", createRefreshTokenCookie(refreshToken, env));
+    headers.append("Set-Cookie", createRefreshTokenCookie(refreshToken, env, !!keepLoggedIn));
     headers.append("Set-Cookie", csrfCookie);
     headers.append("Set-Cookie", clearPreauthCookie());
     
-    return new Response(JSON.stringify({ success: true, accessToken }), { headers });
+    return new Response(JSON.stringify({ success: true, accessToken, needsMigration }), { headers });
   }
 
   // 刷新 Token
@@ -196,7 +202,8 @@ export async function handleAuthSessionRequest(request: Request, env: Env): Prom
     }, jwtKey);
 
     const headers = new Headers({ "Content-Type": "application/json" });
-    headers.append("Set-Cookie", createRefreshTokenCookie(newRefreshToken, env));
+    const isKeepLoggedIn = session.id.startsWith("k_");
+    headers.append("Set-Cookie", createRefreshTokenCookie(newRefreshToken, env, isKeepLoggedIn));
 
     return new Response(JSON.stringify({ success: true, accessToken }), { headers });
   }

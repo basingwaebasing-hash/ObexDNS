@@ -5,7 +5,8 @@ export interface Env {
   ASSETS: any;
   MAX_ACCESS_POINTS_PER_PROFILE?: string | number;
   MAX_PROFILES_PER_USER?: string | number;
-  SESSION_EXPIRATION_DAYS?: string | number;
+  DEFAULT_SESSION_EXPIRATION_MINUTES?: string | number;
+  OPTIONAL_SESSION_EXPIRATION_DAYS?: string | number;
   ACCESS_TOKEN_EXPIRATION_MINUTES?: string | number;
   SESSION_IDLE_TIMEOUT_MINUTES?: string | number;
   SESSION_GEO_DISTANCE_KM?: string | number;
@@ -34,6 +35,7 @@ export interface User {
   last_resolve_at?: number;
   timezone?: string | null;
   locale?: string | null;
+  password_version?: number;
 }
 
 export interface UserActivityLog {

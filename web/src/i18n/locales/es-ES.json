@@ -383,7 +383,7 @@
     "title": "Ajustes de cuenta",
     "subtitle": "Gestiona tus credenciales de seguridad y usuarios del sistema.",
     "roleAdmin": "Administrador del sistema",
-    "roleUser": "Usuario normal",
+    "roleUser": "Usuario",
     "personalInfo": "Información personal",
     "username": "Nombre de usuario",
     "userId": "ID de usuario",
