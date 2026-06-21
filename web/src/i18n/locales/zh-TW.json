@@ -384,7 +384,7 @@
     "title": "帳號設定",
     "subtitle": "管理您的安全憑據和系統用戶。",
     "roleAdmin": "系統管理員",
-    "roleUser": "普通用戶",
+    "roleUser": "用戶",
     "personalInfo": "個人資訊",
     "username": "用戶名",
     "userId": "用戶 ID",

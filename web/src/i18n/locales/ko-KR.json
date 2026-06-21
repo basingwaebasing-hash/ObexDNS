@@ -383,7 +383,7 @@
     "title": "계정 설정",
     "subtitle": "보안 자격 증명 및 시스템 사용자를 관리합니다.",
     "roleAdmin": "시스템 관리자",
-    "roleUser": "일반 사용자",
+    "roleUser": "사용자",
     "personalInfo": "개인 정보",
     "username": "사용자 이름",
     "userId": "사용자 ID",

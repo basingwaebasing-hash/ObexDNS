@@ -383,7 +383,7 @@
     "title": "Paramètres du compte",
     "subtitle": "Gérez vos identifiants de sécurité et les utilisateurs du système.",
     "roleAdmin": "Administrateur système",
-    "roleUser": "Utilisateur standard",
+    "roleUser": "Utilisateur",
     "personalInfo": "Informations personnelles",
     "username": "Nom d'utilisateur",
     "userId": "ID de l'utilisateur",

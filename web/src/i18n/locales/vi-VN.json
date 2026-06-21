@@ -383,7 +383,7 @@
     "title": "Cài đặt tài khoản",
     "subtitle": "Quản lý thông tin bảo mật và người dùng hệ thống của bạn.",
     "roleAdmin": "Quản trị viên hệ thống",
-    "roleUser": "Người dùng thông thường",
+    "roleUser": "Người dùng",
     "personalInfo": "Thông tin cá nhân",
     "username": "Tên đăng nhập",
     "userId": "ID người dùng",
