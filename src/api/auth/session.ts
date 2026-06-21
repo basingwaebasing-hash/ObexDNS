@@ -6,6 +6,7 @@ import {
   createPreauthSession, createPreauthCookie,
   validatePreauthSession, invalidatePreauthSession, clearPreauthCookie,
   readPreauthCookie,
+  recordFailedPreauthAttempt,
   getRequestCoordinates,
   createCsrfCookie,
   getOrCreateJwtSecret, rotateSession, parseRefreshTokenString
@@ -98,8 +99,12 @@ export async function handleAuthSessionRequest(request: Request, env: Env): Prom
       if (!passwordValid) {
         await cacheUtils.isRateLimited(cache, `login_fail:${clientIp}`, 100, 900);
         await activityLog.record(userId, 'login_fail', clientIp, userAgent, { reason: 'wrong_password' });
-        await invalidatePreauthSession(env, preauthToken);
-        return new Response("Invalid password", { status: 400 });
+        const remaining = await recordFailedPreauthAttempt(cache, preauthToken, env);
+        if (remaining <= 0) {
+          return new Response("Invalid password", { status: 400 });
+        } else {
+          return new Response(`Invalid password. ${remaining} attempt${remaining > 1 ? 's' : ''} remaining.`, { status: 400 });
+        }
       }
 
       if ((user.password_version ?? 1) === 1) {
@@ -115,8 +120,12 @@ export async function handleAuthSessionRequest(request: Request, env: Env): Prom
         const matchIndex = await findMatchingRecoveryKey(recoveryKey, storedHashes);
         if (matchIndex === -1) {
           await activityLog.record(userId, 'totp_verify_fail', clientIp, userAgent, { method: 'recovery_key' });
-          await invalidatePreauthSession(env, preauthToken);
-          return new Response("Invalid recovery key", { status: 400 });
+          const remaining = await recordFailedPreauthAttempt(cache, preauthToken, env);
+          if (remaining <= 0) {
+            return new Response("Invalid recovery key", { status: 400 });
+          } else {
+            return new Response(`Invalid recovery key. ${remaining} attempt${remaining > 1 ? 's' : ''} remaining.`, { status: 400 });
+          }
         }
         await userModel.consumeRecoveryKey(userId, matchIndex, storedHashes);
         await activityLog.record(userId, 'recovery_key_used', clientIp, userAgent, { remaining: storedHashes.length - 1 });
@@ -124,13 +133,21 @@ export async function handleAuthSessionRequest(request: Request, env: Env): Prom
         const isValid = await verifyTOTP(user.totp_secret || '', totpTokenHash, totpSalt);
         if (!isValid) {
           await activityLog.record(userId, 'totp_verify_fail', clientIp, userAgent);
-          await invalidatePreauthSession(env, preauthToken);
-          return new Response("Invalid TOTP code", { status: 400 });
+          const remaining = await recordFailedPreauthAttempt(cache, preauthToken, env);
+          if (remaining <= 0) {
+            return new Response("Invalid TOTP code", { status: 400 });
+          } else {
+            return new Response(`Invalid TOTP code. ${remaining} attempt${remaining > 1 ? 's' : ''} remaining.`, { status: 400 });
+          }
         }
         await activityLog.record(userId, 'totp_verify_success', clientIp, userAgent);
       } else {
-        await invalidatePreauthSession(env, preauthToken);
-        return new Response("Missing TOTP code or recovery key", { status: 400 });
+        const remaining = await recordFailedPreauthAttempt(cache, preauthToken, env);
+        if (remaining <= 0) {
+          return new Response("Missing TOTP code or recovery key", { status: 400 });
+        } else {
+          return new Response(`Missing TOTP code or recovery key. ${remaining} attempt${remaining > 1 ? 's' : ''} remaining.`, { status: 400 });
+        }
       }
     }
 
