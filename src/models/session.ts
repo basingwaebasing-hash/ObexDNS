@@ -15,7 +15,7 @@ export class SessionModel {
 
   async getSessionWithUser(sessionId: string): Promise<any> {
     return await this.db.prepare(`
-      SELECT sessions.id as session_id, sessions.user_id, sessions.created_at, sessions.expires_at, sessions.ip_address, sessions.user_agent, sessions.latitude, sessions.longitude, sessions.rotation_counter, sessions.last_active_at,
+      SELECT sessions.id as session_id, sessions.user_id, sessions.created_at, sessions.expires_at, sessions.ip_address, sessions.user_agent, sessions.latitude, sessions.longitude, sessions.rotation_counter, sessions.last_active_at, sessions.is_paused,
              users.id as u_id, users.username, users.role
       FROM sessions
       INNER JOIN users ON sessions.user_id = users.id
@@ -31,6 +31,18 @@ export class SessionModel {
 
   async updateLastActive(id: string, lastActiveAt: number): Promise<boolean> {
     const result = await this.db.prepare("UPDATE sessions SET last_active_at = ? WHERE id = ?")
+      .bind(lastActiveAt, id).run();
+    return result.success;
+  }
+
+  async pauseSession(id: string): Promise<boolean> {
+    const result = await this.db.prepare("UPDATE sessions SET is_paused = 1 WHERE id = ?")
+      .bind(id).run();
+    return result.success;
+  }
+
+  async resumeSession(id: string, lastActiveAt: number): Promise<boolean> {
+    const result = await this.db.prepare("UPDATE sessions SET is_paused = 0, last_active_at = ? WHERE id = ?")
       .bind(lastActiveAt, id).run();
     return result.success;
   }
@@ -78,17 +90,4 @@ export class SessionModel {
     return result.success;
   }
 
-  async cleanupExpired(now: number, idleTimeoutSec: number = 3600): Promise<void> {
-    try {
-      await this.db.prepare("DELETE FROM sessions WHERE expires_at < ? OR COALESCE(last_active_at, created_at) < ?")
-        .bind(now, now - idleTimeoutSec).run();
-    } catch (e) {
-      console.error("[Cron] Expired sessions cleanup failed:", e);
-    }
-    try {
-      await this.db.prepare("DELETE FROM pending_totp_sessions WHERE expires_at < ?").bind(now).run();
-    } catch (e) {
-      console.error("[Cron] Expired pending TOTP sessions cleanup failed:", e);
-    }
-  }
 }

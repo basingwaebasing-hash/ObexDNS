@@ -21,6 +21,7 @@ import { SystemSettingsCard } from "./components/SystemSettingsCard";
 import { DangerZoneCard } from "./components/DangerZoneCard";
 import { PersonalInfoCard } from "./components/PersonalInfoCard";
 import { ChangePasswordCard } from "./components/ChangePasswordCard";
+import { SessionLockCard } from "./components/SessionLockCard";
 import { PASSWORD_REGEX, USERNAME_REGEX } from "../../utils/auth";
 import { useIsMobile } from "../../hooks/useIsMobile";
 
@@ -253,6 +254,9 @@ export const AccountView: React.FC = () => {
 
       {/* TOTP 2FA */}
       {me && <TOTPCard user={me} onRefresh={fetchMe} />}
+
+      {/* Session Lock */}
+      {me && <SessionLockCard user={me} onRefresh={fetchMe} />}
 
       {/* Active Sessions */}
       {me && <ActiveSessionsCard />}

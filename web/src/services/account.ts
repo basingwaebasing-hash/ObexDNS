@@ -1,4 +1,5 @@
 import type { UserInfo, SessionInfo, ActivityEntry } from "./types";
+import { ApiError } from "./auth";
 
 export interface UpdatePasswordPayload {
   oldPassword?: string;
@@ -21,11 +22,16 @@ export interface TotpTogglePayload {
 
 export async function getMe(): Promise<UserInfo> {
   const res = await fetch("/api/account/me");
-  if (!res.ok) throw new Error("Failed to fetch account info");
+  if (!res.ok) throw new ApiError(res.status, await res.text());
   return res.json();
 }
 
-export async function updateMe(payload: { username?: string | null; timezone?: string | null; locale?: string | null }): Promise<UserInfo> {
+export async function updateMe(payload: {
+  username?: string | null;
+  timezone?: string | null;
+  locale?: string | null;
+  session_lock_timeout?: number;
+}): Promise<UserInfo> {
   const res = await fetch("/api/account/me", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -115,4 +121,22 @@ export async function migratePassword(clientHash: string): Promise<void> {
     body: JSON.stringify({ clientHash })
   });
   if (!res.ok) throw new Error(await res.text());
+}
+
+export async function setPin(pinHash: string, verificationPayload: { password?: string; totpTokenHash?: string; totpSalt?: string }): Promise<void> {
+  const res = await fetch("/api/account/pin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pinHash, ...verificationPayload })
+  });
+  if (!res.ok) throw new ApiError(res.status, await res.text());
+}
+
+export async function clearPin(verificationPayload: { password?: string; totpTokenHash?: string; totpSalt?: string }): Promise<void> {
+  const res = await fetch("/api/account/pin", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(verificationPayload)
+  });
+  if (!res.ok) throw new ApiError(res.status, await res.text());
 }

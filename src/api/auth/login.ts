@@ -2,14 +2,14 @@ import { Env } from "../../types";
 import {
   generateId,
   createSession, createRefreshTokenCookie,
-  readRefreshTokenCookie, invalidateSession, createBlankRefreshTokenCookie,
   createPreauthSession, createPreauthCookie,
   validatePreauthSession, invalidatePreauthSession, clearPreauthCookie,
   readPreauthCookie,
   recordFailedPreauthAttempt,
   getRequestCoordinates,
   createCsrfCookie,
-  getOrCreateJwtSecret, rotateSession, parseRefreshTokenString
+  getOrCreateJwtSecret,
+  extractSaltHex, hmacSha256
 } from "../../lib/auth";
 import { importJwtSecret, signJWT } from "../../lib/jwt";
 import { verifyPassword } from "../../utils/crypto";
@@ -17,14 +17,13 @@ import { verifyTOTP, findMatchingRecoveryKey } from "../../lib/totp";
 import { UserModel } from "../../models/user";
 import { ActivityLogModel } from "../../models/activityLog";
 import { SystemSettingsModel } from "../../models/systemSettings";
-import { SessionModel } from "../../models/session";
 import { cacheUtils } from "../../utils/cache";
 import { verifyTurnstile } from "./utils";
 
 /**
- * Handle session lifecycle: prelogin, login, token refresh, and logout
+ * Handle prelogin and login requests
  */
-export async function handleAuthSessionRequest(request: Request, env: Env): Promise<Response> {
+export async function handleLoginRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const userModel = new UserModel(env.DB);
   const activityLog = new ActivityLogModel(env.DB);
@@ -64,7 +63,23 @@ export async function handleAuthSessionRequest(request: Request, env: Env): Prom
     const requires_totp = !!user.totp_enabled;
     const password_version = user.password_version ?? 1;
 
-    return new Response(JSON.stringify({ requires_password, requires_totp, password_version }), {
+    // Generate nonce for Step 2 challenge-response verification
+    const nonce = generateId(32);
+    let serverSalt: string | null = null;
+    if (password_version === 2 && user.hashed_password) {
+      serverSalt = extractSaltHex(user.hashed_password);
+    }
+
+    const preauthTtl = Number(env.PREAUTH_TTL_SECONDS) || 300;
+    await cacheUtils.set(cache, `preauth_state:${preauthToken}`, { nonce, failedAttempts: 0 }, preauthTtl);
+
+    return new Response(JSON.stringify({
+      requires_password,
+      requires_totp,
+      password_version,
+      nonce,
+      serverSalt
+    }), {
       headers: {
         "Set-Cookie": preauthCookie,
         "Content-Type": "application/json"
@@ -87,6 +102,13 @@ export async function handleAuthSessionRequest(request: Request, env: Env): Prom
     const userId = await validatePreauthSession(env, preauthToken);
     if (!userId) return new Response("Session expired, please start over", { status: 401 });
 
+    const preauthState = await cacheUtils.get<{ nonce: string, failedAttempts: number }>(cache, `preauth_state:${preauthToken}`);
+    if (!preauthState) {
+      await invalidatePreauthSession(env, preauthToken);
+      return new Response("Session expired, please start over", { status: 401 });
+    }
+    const { nonce } = preauthState;
+
     const user = await userModel.getById(userId);
     if (!user) return new Response("User not found", { status: 404 });
 
@@ -95,19 +117,32 @@ export async function handleAuthSessionRequest(request: Request, env: Env): Prom
     let needsMigration = false;
     // 验证密码
     if (!user.totp_skip_password) {
-      const passwordValid = await verifyPassword(password, user.hashed_password, user.password_version ?? 1);
-      if (!passwordValid) {
-        await cacheUtils.isRateLimited(cache, `login_fail:${clientIp}`, 100, 900);
-        await activityLog.record(userId, 'login_fail', clientIp, userAgent, { reason: 'wrong_password' });
-        const remaining = await recordFailedPreauthAttempt(cache, preauthToken, env);
-        if (remaining <= 0) {
-          return new Response("Invalid password", { status: 400 });
-        } else {
-          return new Response(`Invalid password. ${remaining} attempt${remaining > 1 ? 's' : ''} remaining.`, { status: 400 });
+      if ((user.password_version ?? 1) === 2) {
+        // Nonce challenge-response validation
+        const expectedResponse = await hmacSha256(user.hashed_password, nonce);
+        if (password !== expectedResponse) {
+          await cacheUtils.isRateLimited(cache, `login_fail:${clientIp}`, 100, 900);
+          await activityLog.record(userId, 'login_fail', clientIp, userAgent, { reason: 'wrong_password' });
+          const remaining = await recordFailedPreauthAttempt(cache, preauthToken, env);
+          if (remaining <= 0) {
+            return new Response("Invalid password", { status: 400 });
+          } else {
+            return new Response(`Invalid password. ${remaining} attempt${remaining > 1 ? 's' : ''} remaining.`, { status: 400 });
+          }
         }
-      }
-
-      if ((user.password_version ?? 1) === 1) {
+      } else {
+        // Plaintext validation (v1)
+        const passwordValid = await verifyPassword(password, user.hashed_password, 1);
+        if (!passwordValid) {
+          await cacheUtils.isRateLimited(cache, `login_fail:${clientIp}`, 100, 900);
+          await activityLog.record(userId, 'login_fail', clientIp, userAgent, { reason: 'wrong_password' });
+          const remaining = await recordFailedPreauthAttempt(cache, preauthToken, env);
+          if (remaining <= 0) {
+            return new Response("Invalid password", { status: 400 });
+          } else {
+            return new Response(`Invalid password. ${remaining} attempt${remaining > 1 ? 's' : ''} remaining.`, { status: 400 });
+          }
+        }
         needsMigration = true;
       }
     }
@@ -153,6 +188,7 @@ export async function handleAuthSessionRequest(request: Request, env: Env): Prom
 
     // 所有验证通过，已消耗 preauthToken 颁发正式 Session
     await invalidatePreauthSession(env, preauthToken);
+    await cacheUtils.delete(cache, `preauth_state:${preauthToken}`);
     await cacheUtils.delete(cache, `ratelimit:login_fail:${clientIp}`);
     await activityLog.record(userId, 'login_success', clientIp, userAgent);
 
@@ -180,72 +216,6 @@ export async function handleAuthSessionRequest(request: Request, env: Env): Prom
     headers.append("Set-Cookie", clearPreauthCookie());
     
     return new Response(JSON.stringify({ success: true, accessToken, needsMigration }), { headers });
-  }
-
-  // 刷新 Token
-  if (url.pathname === '/api/auth/refresh' && request.method === 'POST') {
-    if (await cacheUtils.isRateLimited(cache, `refresh_fail:${clientIp}`, 20, 60)) {
-      return new Response("Too many attempts", { status: 429 });
-    }
-
-    const refreshToken = readRefreshTokenCookie(request.headers.get("Cookie"));
-    if (!refreshToken) return new Response("Refresh token missing", { status: 401 });
-
-    const { latitude, longitude } = getRequestCoordinates(request);
-    const { session, user, newRefreshToken, reason } = await rotateSession(env, refreshToken, latitude, longitude);
-
-    if (!session || !user || !newRefreshToken) {
-      if (user) {
-        await activityLog.record(user.id, 'logout', clientIp, userAgent, { reason: reason || 'unknown' });
-      }
-      await cacheUtils.isRateLimited(cache, `refresh_fail:${clientIp}`, 100, 60);
-      return new Response(JSON.stringify({ error: "Invalid refresh token", reason: reason || "unknown" }), { 
-        status: 401,
-        headers: {
-          "Set-Cookie": createBlankRefreshTokenCookie(),
-          "Content-Type": "application/json"
-        }
-      });
-    }
-
-    const secret = await getOrCreateJwtSecret(env);
-    const jwtKey = await importJwtSecret(secret);
-    const expMinutes = Number(env.ACCESS_TOKEN_EXPIRATION_MINUTES) || 10;
-    const accessToken = await signJWT({ 
-      userId: user.id, 
-      role: user.role, 
-      sessionId: session.id,
-      exp: Math.floor(Date.now() / 1000) + expMinutes * 60
-    }, jwtKey);
-
-    const headers = new Headers({ "Content-Type": "application/json" });
-    const isKeepLoggedIn = session.id.startsWith("k_");
-    headers.append("Set-Cookie", createRefreshTokenCookie(newRefreshToken, env, isKeepLoggedIn));
-
-    return new Response(JSON.stringify({ success: true, accessToken }), { headers });
-  }
-
-  // 登出
-  if (url.pathname === '/api/auth/logout' && request.method === 'POST') {
-    const refreshToken = readRefreshTokenCookie(request.headers.get("Cookie"));
-    if (refreshToken) {
-      // Validate refresh token just enough to get the session ID and invalidate it
-      const parsed = parseRefreshTokenString(refreshToken);
-      if (parsed) {
-        const sessionModel = new SessionModel(env.DB);
-        const userId = await sessionModel.getSessionUserId(parsed.sid);
-        await invalidateSession(env, parsed.sid);
-        if (userId) {
-          await activityLog.record(userId, 'logout', clientIp, userAgent, { reason: 'user_active' });
-        }
-      }
-    }
-    const responseHeaders = new Headers({ "Content-Type": "application/json" });
-    responseHeaders.append("Set-Cookie", createBlankRefreshTokenCookie());
-    responseHeaders.append("Set-Cookie", "csrf_token=; SameSite=Lax; Path=/; Max-Age=0; Secure");
-    return new Response(JSON.stringify({ success: true }), {
-      headers: responseHeaders
-    });
   }
 
   return new Response("Not Found", { status: 404 });

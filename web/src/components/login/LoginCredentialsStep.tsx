@@ -1,6 +1,7 @@
 import React from "react";
 import { FormGroup, InputGroup, Button, Intent, Checkbox } from "@blueprintjs/core";
 import { useTranslation } from "react-i18next";
+import { DigitInput } from "../DigitInput";
 
 /**
  * Properties for the LoginCredentialsStep component.
@@ -143,21 +144,11 @@ export const LoginCredentialsStep: React.FC<LoginCredentialsStepProps> = ({
                   : t("auth.totpVerification", "TOTP Verification")
               }
             >
-              <InputGroup
-                id="totp-code"
-                leftIcon="shield"
-                placeholder="000000"
-                size="large"
-                className="rounded-xl font-mono tracking-widest text-center"
+              <DigitInput
+                length={6}
                 value={totpToken}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setTotpToken(
-                    e.target.value.replace(/\D/g, "").slice(0, 6)
-                  )
-                }
-                maxLength={6}
-                inputMode="numeric"
-                required
+                onChange={setTotpToken}
+                disabled={loading}
                 autoFocus={!requiresPassword}
               />
             </FormGroup>

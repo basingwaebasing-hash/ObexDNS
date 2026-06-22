@@ -1,17 +1,13 @@
-import React, { useState } from "react";
-import { Section, SectionCard, Button, Intent, Spinner, Dialog, Classes, InputGroup, Tooltip, PopoverNext, Position } from "@blueprintjs/core";
-import { Trash2, Edit2, RefreshCw, Plus, MonitorSmartphone, Copy, Search } from "lucide-react";
+import React from "react";
+import { Button, Intent, Spinner, InputGroup } from "@blueprintjs/core";
+import { Plus, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { AccessPoint } from "../../../types/auth";
-import { formatDateTime } from "../../../utils/date";
-import { AP_NAME_REGEX } from "../../../utils/auth";
-import {
-  addProfileAccessPoint,
-  renameProfileAccessPoint,
-  rotateProfileAccessPointToken,
-  deleteProfileAccessPoint
-} from "../../../services";
 import { SwipeableDrawer } from "../../../components/SwipeableDrawer";
+import { useAccessPoints } from "../hooks/useAccessPoints";
+import { AddAccessPointDialog } from "./AddAccessPointDialog";
+import { RenameAccessPointDialog } from "./RenameAccessPointDialog";
+import { AccessPointSection } from "./AccessPointSection";
 
 export interface AccessPointDrawerProps {
   isOpen: boolean;
@@ -35,112 +31,42 @@ export const AccessPointDrawer: React.FC<AccessPointDrawerProps> = ({
   toasterRef,
 }) => {
   const { t } = useTranslation();
-  
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newApName, setNewApName] = useState("");
-  const [isAdding, setIsAdding] = useState(false);
 
-
-
-  const [renameApId, setRenameApId] = useState<string | null>(null);
-  const [renameApName, setRenameApName] = useState("");
-  const [isRenaming, setIsRenaming] = useState(false);
-
-  const [rotatingApId, setRotatingApId] = useState<string | null>(null);
-  const [deletingApId, setDeletingApId] = useState<string | null>(null);
-
-  const [newApNameFocused, setNewApNameFocused] = useState(false);
-  const [renameApNameFocused, setRenameApNameFocused] = useState(false);
-  const [rotateConfirmApId, setRotateConfirmApId] = useState<string | null>(null);
-
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const filteredAccessPoints = accessPoints.filter(ap => 
-    ap.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    ap.token.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const isValidApName = (name: string) => AP_NAME_REGEX.test(name);
-
-  const handleAdd = async () => {
-    const trimmedName = newApName.trim();
-    if (!trimmedName) return;
-
-    if (accessPoints.some(ap => ap.name.toLowerCase() === trimmedName.toLowerCase())) {
-      toasterRef.current?.show({ message: t("setup.accessPointNameExists", "Access Point name already exists"), intent: Intent.DANGER });
-      return;
-    }
-
-    setIsAdding(true);
-    try {
-      await addProfileAccessPoint(profileId, trimmedName);
-      toasterRef.current?.show({ message: t("setup.accessPointCreated"), intent: Intent.SUCCESS });
-      setIsAddDialogOpen(false);
-      setNewApName("");
-      onRefresh();
-    } catch (e: any) {
-      const errMsg = e.message || "Failed to create access point";
-      let displayMsg = errMsg;
-      if (errMsg.startsWith("Access point limit exceeded")) {
-        const match = errMsg.match(/\(max (\d+)\)/);
-        const maxVal = match ? match[1] : "100";
-        displayMsg = t("setup.accessPointLimitExceeded", { max: maxVal, defaultValue: `Access Point limit exceeded (max ${maxVal})` });
-      }
-      toasterRef.current?.show({ message: displayMsg, intent: Intent.DANGER });
-    } finally {
-      setIsAdding(false);
-    }
-  };
-
-  const handleRename = async () => {
-    const trimmedName = renameApName.trim();
-    if (!trimmedName || !renameApId) return;
-
-    if (accessPoints.some(ap => ap.id !== renameApId && ap.name.toLowerCase() === trimmedName.toLowerCase())) {
-      toasterRef.current?.show({ message: t("setup.accessPointNameExists", "Access Point name already exists"), intent: Intent.DANGER });
-      return;
-    }
-
-    setIsRenaming(true);
-    try {
-      await renameProfileAccessPoint(profileId, renameApId, trimmedName);
-      toasterRef.current?.show({ message: t("setup.accessPointRenamed"), intent: Intent.SUCCESS });
-      setRenameApId(null);
-      onRefresh();
-    } catch (e: any) {
-      toasterRef.current?.show({ message: e.message || "Failed to rename access point", intent: Intent.DANGER });
-    } finally {
-      setIsRenaming(false);
-    }
-  };
-
-  const handleRotate = async (apId: string) => {
-    setRotatingApId(apId);
-    try {
-      await rotateProfileAccessPointToken(profileId, apId);
-      toasterRef.current?.show({ message: t("setup.tokenRotated"), intent: Intent.SUCCESS });
-      onRefresh();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setRotatingApId(null);
-    }
-  };
-
-  const handleDelete = async (apId: string) => {
-    if (!confirm(t("setup.deleteAccessPointConfirm"))) return;
-    setDeletingApId(apId);
-    try {
-      await deleteProfileAccessPoint(profileId, apId);
-      toasterRef.current?.show({ message: t("setup.accessPointDeleted"), intent: Intent.SUCCESS });
-      onRefresh();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setDeletingApId(null);
-    }
-  };
+  const {
+    isAddDialogOpen,
+    setIsAddDialogOpen,
+    newApName,
+    setNewApName,
+    isAdding,
+    renameApId,
+    setRenameApId,
+    renameApName,
+    setRenameApName,
+    isRenaming,
+    rotatingApId,
+    deletingApId,
+    newApNameFocused,
+    setNewApNameFocused,
+    renameApNameFocused,
+    setRenameApNameFocused,
+    rotateConfirmApId,
+    setRotateConfirmApId,
+    isSearchOpen,
+    setIsSearchOpen,
+    searchQuery,
+    setSearchQuery,
+    filteredAccessPoints,
+    isValidApName,
+    handleAdd,
+    handleRename,
+    handleRotate,
+    handleDelete
+  } = useAccessPoints({
+    profileId,
+    accessPoints,
+    onRefresh,
+    toasterRef
+  });
 
   return (
     <>
@@ -167,181 +93,64 @@ export const AccessPointDrawer: React.FC<AccessPointDrawerProps> = ({
         icon="diagram-tree"
         size={isMobile ? "100%" : "450px"}
       >
-          <Button 
-            fill 
-            intent={Intent.PRIMARY} 
-            icon={<Plus size={16} />} 
-            text={t("setup.addAccessPoint")} 
-            onClick={() => setIsAddDialogOpen(true)}
-            large
-          />
+        <Button 
+          fill 
+          intent={Intent.PRIMARY} 
+          icon={<Plus size={16} />} 
+          text={t("setup.addAccessPoint")} 
+          onClick={() => setIsAddDialogOpen(true)}
+          large
+        />
 
-          {loading ? (
-            <div className="flex justify-center p-8"><Spinner /></div>
-          ) : (
-            <div className="space-y-4 mt-4">
-              {filteredAccessPoints.map(ap => (
-                <Section key={ap.id} title={
-                  <div className="flex items-center gap-2">
-                    <MonitorSmartphone size={16} />
-                    <span>{ap.name}</span>
-                  </div>
-                } className="shadow-none! rounded-lg!">
-                  <SectionCard>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-start gap-4">
-                        <span className="text-xs opacity-50 mt-1">DoH URL</span>
-                        <div 
-                          className="flex items-center gap-2 text-sm font-mono bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 px-2 py-1 rounded cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors break-all"
-                          onClick={() => {
-                            navigator.clipboard.writeText(`${window.location.origin}/${ap.token}`);
-                            toasterRef.current?.show({ message: t("setup.copied"), intent: Intent.SUCCESS });
-                          }}
-                          title={t("setup.copyUrl")}
-                        >
-                          <span className="select-all">{`${window.location.origin}/${ap.token}`}</span>
-                          <Copy size={14} className="shrink-0" />
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-start gap-4">
-                        <span className="text-xs opacity-50 mt-1">{t("setup.accessPointToken")}</span>
-                        <span className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded select-all break-all">{ap.token}</span>
-                      </div>
-                      <div className="flex justify-between items-start gap-4">
-                        <span className="text-xs opacity-50 mt-1">Created</span>
-                        <span className="text-sm">{formatDateTime(new Date(ap.created_at * 1000))}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4 flex gap-2 flex-wrap">
-                      <Button 
-                        small 
-                        icon={<Edit2 size={14} />} 
-                        text={t("setup.renameAccessPoint")} 
-                        onClick={() => { setRenameApId(ap.id); setRenameApName(ap.name); }}
-                      />
-                      <PopoverNext
-                        isOpen={rotateConfirmApId === ap.id}
-                        onInteraction={(nextOpenState) => {
-                          if (!nextOpenState) {
-                            setRotateConfirmApId(null);
-                          }
-                        }}
-                        content={
-                          <div className="p-4 space-y-3 dark:bg-gray-800 dark:text-white max-w-xs">
-                            <p className="text-xs font-semibold leading-relaxed">
-                              {t("setup.rotateTokenConfirmDesc", "Rotating the key will immediately disconnect devices using the old key. Are you sure you want to continue?")}
-                            </p>
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                small
-                                minimal
-                                text={t("common.cancel", "Cancel")}
-                                onClick={() => setRotateConfirmApId(null)}
-                              />
-                              <Button
-                                small
-                                intent={Intent.DANGER}
-                                text={t("common.confirm", "Confirm")}
-                                onClick={() => {
-                                  setRotateConfirmApId(null);
-                                  handleRotate(ap.id);
-                                }}
-                              />
-                            </div>
-                          </div>
-                        }
-                        placement="top"
-                      >
-                        <Button 
-                          small 
-                          icon={<RefreshCw size={14} />} 
-                          text={t("setup.rotateToken")} 
-                          loading={rotatingApId === ap.id}
-                          onClick={() => setRotateConfirmApId(ap.id)}
-                        />
-                      </PopoverNext>
-                      <Button 
-                        small 
-                        intent={Intent.DANGER}
-                        icon={<Trash2 size={14} />} 
-                        text={t("setup.deleteAccessPoint")}
-                        loading={deletingApId === ap.id}
-                        onClick={() => handleDelete(ap.id)}
-                        disabled={accessPoints.length <= 1} // Prevent deleting the last access point
-                        title={accessPoints.length <= 1 ? "Cannot delete the only access point" : undefined}
-                      />
-                    </div>
-                  </SectionCard>
-                </Section>
-              ))}
-            </div>
-          )}
+        {loading ? (
+          <div className="flex justify-center p-8"><Spinner /></div>
+        ) : (
+          <div className="space-y-4 mt-4">
+            {filteredAccessPoints.map(ap => (
+              <AccessPointSection
+                key={ap.id}
+                ap={ap}
+                totalApCount={accessPoints.length}
+                toasterRef={toasterRef}
+                onRenameTrigger={(id, name) => {
+                  setRenameApId(id);
+                  setRenameApName(name);
+                }}
+                rotateConfirmApId={rotateConfirmApId}
+                setRotateConfirmApId={setRotateConfirmApId}
+                rotatingApId={rotatingApId}
+                handleRotate={handleRotate}
+                deletingApId={deletingApId}
+                handleDelete={handleDelete}
+              />
+            ))}
+          </div>
+        )}
       </SwipeableDrawer>
 
-      <Dialog isOpen={isAddDialogOpen} onClose={() => { setIsAddDialogOpen(false); setNewApName(""); }} title={t("setup.addAccessPoint")}>
-        <div className={Classes.DIALOG_BODY}>
-          <Tooltip
-            content={t("setup.accessPointNameFormatTip", "1-30 characters, letters, numbers, hyphens and underscores allowed")}
-            isOpen={newApNameFocused}
-            position={Position.TOP}
-            intent={Intent.PRIMARY}
-            className="w-full"
-          >
-            <div className="w-full block">
-              <InputGroup
-                autoFocus
-                large
-                placeholder={t("setup.accessPointName")}
-                value={newApName}
-                onChange={(e) => setNewApName(e.target.value)}
-                onFocus={() => setNewApNameFocused(true)}
-                onBlur={() => setNewApNameFocused(false)}
-              />
-            </div>
-          </Tooltip>
-        </div>
-        <div className={Classes.DIALOG_FOOTER}>
-          <div className={Classes.DIALOG_FOOTER_ACTIONS}>
-            <Button onClick={() => { setIsAddDialogOpen(false); setNewApName(""); }}>Cancel</Button>
-            <Button intent={Intent.PRIMARY} onClick={handleAdd} loading={isAdding} disabled={!isValidApName(newApName)}>
-              {t("common.create")}
-            </Button>
-          </div>
-        </div>
-      </Dialog>
+      <AddAccessPointDialog
+        isOpen={isAddDialogOpen}
+        onClose={() => { setIsAddDialogOpen(false); setNewApName(""); }}
+        newApName={newApName}
+        setNewApName={setNewApName}
+        newApNameFocused={newApNameFocused}
+        setNewApNameFocused={setNewApNameFocused}
+        handleAdd={handleAdd}
+        isAdding={isAdding}
+        isValidApName={isValidApName}
+      />
 
-      <Dialog isOpen={!!renameApId} onClose={() => setRenameApId(null)} title={t("setup.renameAccessPoint")}>
-        <div className={Classes.DIALOG_BODY}>
-          <Tooltip
-            content={t("setup.accessPointNameFormatTip", "1-30 characters, letters, numbers, hyphens and underscores allowed")}
-            isOpen={renameApNameFocused}
-            position={Position.TOP}
-            intent={Intent.PRIMARY}
-            className="w-full"
-          >
-            <div className="w-full block">
-              <InputGroup
-                autoFocus
-                large
-                placeholder={t("setup.accessPointName")}
-                value={renameApName}
-                onChange={(e) => setRenameApName(e.target.value)}
-                onFocus={() => setRenameApNameFocused(true)}
-                onBlur={() => setRenameApNameFocused(false)}
-              />
-            </div>
-          </Tooltip>
-        </div>
-        <div className={Classes.DIALOG_FOOTER}>
-          <div className={Classes.DIALOG_FOOTER_ACTIONS}>
-            <Button onClick={() => setRenameApId(null)}>Cancel</Button>
-            <Button intent={Intent.PRIMARY} onClick={handleRename} loading={isRenaming} disabled={!isValidApName(renameApName)}>
-              {t("common.save")}
-            </Button>
-          </div>
-        </div>
-      </Dialog>
+      <RenameAccessPointDialog
+        isOpen={!!renameApId}
+        onClose={() => setRenameApId(null)}
+        renameApName={renameApName}
+        setRenameApName={setRenameApName}
+        renameApNameFocused={renameApNameFocused}
+        setRenameApNameFocused={setRenameApNameFocused}
+        handleRename={handleRename}
+        isRenaming={isRenaming}
+        isValidApName={isValidApName}
+      />
     </>
   );
 };

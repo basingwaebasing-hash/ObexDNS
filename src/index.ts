@@ -44,6 +44,7 @@ export default {
 
         const isPublicRoute = [
           '/api/auth/login', '/api/auth/signup', '/api/auth/prelogin', '/api/auth/check-username',
+          '/api/auth/unlock-session',
           '/api/clientinfo', '/api/regions'
         ].includes(url.pathname) || url.pathname.startsWith('/api/icon/');
         const isMobileConfigRoute = url.pathname.endsWith('/mobileconfig');
@@ -51,6 +52,17 @@ export default {
         // Check authentication boundary
         if (!currentUser && !isPublicRoute && !isMobileConfigRoute) {
           return new Response("Unauthorized", { status: 401 });
+        }
+
+        // Handle paused sessions: block all routes except unlock and logout
+        if (currentUser && currentUser.isPaused) {
+          const isAllowedWhilePaused = [
+            '/api/auth/unlock-session',
+            '/api/auth/logout'
+          ].includes(url.pathname);
+          if (!isAllowedWhilePaused) {
+            return new Response("session_paused", { status: 403 });
+          }
         }
 
         // Validate CSRF for mutating requests

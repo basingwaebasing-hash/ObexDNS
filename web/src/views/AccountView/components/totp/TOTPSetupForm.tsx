@@ -8,12 +8,12 @@ import {
   Button,
   Callout,
   Divider,
-  FormGroup,
-  InputGroup
+  FormGroup
 } from "@blueprintjs/core";
 import { Smartphone, Shield } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { QRCodeCanvas } from "../QRCodeCanvas";
+import { DigitInput } from "../../../../components/DigitInput";
 
 /**
  * Properties for the TOTPSetupForm component.
@@ -123,19 +123,11 @@ export const TOTPSetupForm: React.FC<TOTPSetupFormProps> = ({
                 "This verifies the key was scanned correctly."
               )}
             >
-              <InputGroup
-                id="totp-setup-token"
-                placeholder="000000"
+              <DigitInput
+                length={6}
                 value={setupToken}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setSetupToken(
-                    e.target.value.replace(/\D/g, "").slice(0, 6)
-                  )
-                }
-                maxLength={6}
-                inputMode="numeric"
-                className="font-mono tracking-widest"
-                required
+                onChange={setSetupToken}
+                disabled={setupLoading}
               />
             </FormGroup>
             <div className="flex gap-2">

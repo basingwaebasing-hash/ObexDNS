@@ -2,13 +2,13 @@ import React from "react";
 import {
   Button,
   FormGroup,
-  InputGroup,
   Callout,
   Intent,
   Divider
 } from "@blueprintjs/core";
 import { useTranslation } from "react-i18next";
 import { QRCodeCanvas } from "../../views/AccountView/components/QRCodeCanvas";
+import { DigitInput } from "../DigitInput";
 
 /**
  * Properties for the SignupTotpStep component.
@@ -76,20 +76,12 @@ export const SignupTotpStep: React.FC<SignupTotpStepProps> = ({
             "This verifies the key was scanned correctly."
           )}
         >
-          <InputGroup
-            id="totp-signup-setup-token"
-            placeholder="000000"
+          <DigitInput
+            length={6}
             value={totpSetupToken}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setTotpSetupToken(
-                e.target.value.replace(/\D/g, "").slice(0, 6)
-              )
-            }
-            maxLength={6}
-            inputMode="numeric"
-            className="font-mono tracking-widest text-center"
+            onChange={setTotpSetupToken}
+            disabled={totpSetupLoading}
             autoFocus
-            required
           />
         </FormGroup>
         <div className="flex gap-2 pt-2">

@@ -8,7 +8,6 @@ export interface Env {
   DEFAULT_SESSION_EXPIRATION_MINUTES?: string | number;
   OPTIONAL_SESSION_EXPIRATION_DAYS?: string | number;
   ACCESS_TOKEN_EXPIRATION_MINUTES?: string | number;
-  SESSION_IDLE_TIMEOUT_MINUTES?: string | number;
   SESSION_GEO_DISTANCE_KM?: string | number;
   PREAUTH_TTL_SECONDS?: string | number;
   BLOOM_MEM_TTL?: string | number;
@@ -36,6 +35,10 @@ export interface User {
   timezone?: string | null;
   locale?: string | null;
   password_version?: number;
+  pin_hash?: string | null;
+  isPaused?: boolean;
+  sessionId?: string;
+  session_lock_timeout?: number;
 }
 
 export interface UserActivityLog {

@@ -135,3 +135,80 @@ export const ACCESS_KEY_REGEX = /^[a-zA-Z0-9]{6,12}$/;
 export const TOTP_TOKEN_REGEX = /^\d{6}$/;
 export const PROFILE_NAME_REGEX = /^[\p{L}\p{N}_ -]{1,30}$/u;
 export const AP_NAME_REGEX = /^[a-zA-Z0-9_-]{1,30}$/;
+
+/**
+ * Converts a hexadecimal string to a Uint8Array.
+ */
+export function hexToUint8Array(hexString: string): Uint8Array {
+  const bytes = new Uint8Array(hexString.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hexString.substring(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+/**
+ * Derives the stored hash from the client hash using PBKDF2 with 100,000 iterations.
+ * This matches the backend hashPassword(clientHash, 2) implementation.
+ */
+export async function deriveStoredHashClient(clientHash: string, saltHex: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const passwordBuffer = encoder.encode(clientHash);
+  const salt = hexToUint8Array(saltHex);
+
+  const baseKey = await crypto.subtle.importKey(
+    "raw",
+    passwordBuffer,
+    "PBKDF2",
+    false,
+    ["deriveBits", "deriveKey"]
+  );
+
+  const hashBuffer = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: salt as any,
+      iterations: 100000,
+      hash: "SHA-256"
+    },
+    baseKey,
+    256
+  );
+
+  const combined = new Uint8Array(salt.length + hashBuffer.byteLength);
+  combined.set(salt);
+  combined.set(new Uint8Array(hashBuffer), salt.length);
+
+  return btoa(String.fromCharCode(...combined));
+}
+
+/**
+ * Computes the HMAC-SHA256 signature of the given data using the specified key.
+ * Returns a hex-encoded signature.
+ */
+export async function hmacSha256(key: string, data: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const keyBuffer = encoder.encode(key);
+  const dataBuffer = encoder.encode(data);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyBuffer,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, dataBuffer);
+  return Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
+ * Computes the PBKDF2 client hash of a 4-digit PIN for session locking,
+ * reusing the client-side password hashing scheme (600,000 iterations).
+ */
+export async function hashPin(pin: string, salt: string): Promise<string> {
+  return hashPasswordClient(pin, salt);
+}

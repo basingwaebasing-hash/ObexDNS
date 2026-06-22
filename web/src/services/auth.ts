@@ -25,6 +25,8 @@ export interface PreloginResponse {
   requires_password: boolean;
   requires_totp: boolean;
   password_version?: number;
+  nonce?: string;
+  serverSalt?: string | null;
 }
 
 export interface LoginPayload {
@@ -103,4 +105,18 @@ export async function refresh(): Promise<LoginResponse> {
   const res = await fetch("/api/auth/refresh", { method: "POST" });
   if (!res.ok) throw new ApiError(res.status, await res.text());
   return res.json();
+}
+
+export async function unlockSession(pinHash: string): Promise<void> {
+  const res = await fetch("/api/auth/unlock-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pinHash })
+  });
+  if (!res.ok) throw new ApiError(res.status, await res.text());
+}
+
+export async function lockSession(): Promise<void> {
+  const res = await fetch("/api/auth/lock-session", { method: "POST" });
+  if (!res.ok) throw new ApiError(res.status, await res.text());
 }

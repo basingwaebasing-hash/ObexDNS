@@ -7,10 +7,14 @@ import { refresh, getMe, logout, ApiError } from "../services";
 import type { UserInfo } from "../services";
 
 /**
- * Helper to clear the CSRF cookie.
+ * Helper to clear the CSRF cookie and session storage flags.
  */
 const clearCsrfToken = () => {
   document.cookie = "csrf_token=; Max-Age=0; path=/; Secure; SameSite=Lax";
+  try {
+    sessionStorage.removeItem("obex_session_active");
+    sessionStorage.removeItem("obex_session_locked");
+  } catch {}
 };
 
 /**
@@ -58,6 +62,11 @@ export function useAuth(toasterRef: React.RefObject<OverlayToaster | null>) {
         }
         setIsLoggedIn(true);
       } catch (err: any) {
+        if (err instanceof ApiError && err.status === 403 && err.bodyText === "session_paused") {
+          setIsLoggedIn(true);
+          window.dispatchEvent(new Event("session_paused"));
+          return;
+        }
         if (err instanceof ApiError && err.status === 401) {
           clearCsrfToken();
         }

@@ -73,8 +73,6 @@ DEFAULT_SESSION_EXPIRATION_MINUTES=1440
 OPTIONAL_SESSION_EXPIRATION_DAYS=7
 # Access Token expiration time (in minutes)
 ACCESS_TOKEN_EXPIRATION_MINUTES=1
-# Session idle timeout (in minutes) after which an inactive user is logged out
-SESSION_IDLE_TIMEOUT_MINUTES=60
 # Maximum allowed distance (in km) between session login and current request
 SESSION_GEO_DISTANCE_KM=50
 # TTL for temporary pre-auth session during login (in seconds)

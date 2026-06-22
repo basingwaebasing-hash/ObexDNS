@@ -21,7 +21,7 @@ export async function handlePersonalAccountRequest(
   }
 
   // Delegate password updates and TOTP settings
-  if (action === 'password' || action === 'totp' || action === 'migrate-password') {
+  if (action === 'password' || action === 'totp' || action === 'migrate-password' || action === 'pin') {
     return handleSecurityRequest(request, env, user, pathParts, ctx);
   }
 

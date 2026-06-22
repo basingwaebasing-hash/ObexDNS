@@ -12,7 +12,9 @@ export type ActivityAction =
   | 'totp_setup'
   | 'totp_removed'
   | 'recovery_key_used'
-  | 'session_revoked';
+  | 'session_revoked'
+  | 'pin_verify_success'
+  | 'pin_verify_fail';
 
 export interface UserActivityEntry {
   id: number;

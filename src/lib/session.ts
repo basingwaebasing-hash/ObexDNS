@@ -15,6 +15,7 @@ export interface Session {
   longitude?: number | null;
   rotation_counter?: number;
   last_active_at?: number | null;
+  is_paused?: number;
 }
 
 export interface SessionValidationResult {
@@ -134,7 +135,8 @@ export async function rotateSession(
     latitude: result.latitude,
     longitude: result.longitude,
     rotation_counter: result.rotation_counter,
-    last_active_at: result.last_active_at
+    last_active_at: result.last_active_at,
+    is_paused: result.is_paused
   };
 
   const user: User = {
@@ -156,15 +158,7 @@ export async function rotateSession(
     return { session: null, user, newRefreshToken: null, reason: "expired" };
   }
 
-  // Idle timeout check
   const now = Math.floor(Date.now() / 1000);
-  const idleTimeoutMin = Number(env.SESSION_IDLE_TIMEOUT_MINUTES) || 60;
-  const idleTimeoutSec = idleTimeoutMin * 60;
-  const lastActive = session.last_active_at || session.created_at;
-  if (now - lastActive > idleTimeoutSec) {
-    await invalidateSession(env, session.id);
-    return { session: null, user, newRefreshToken: null, reason: "idle_timeout" };
-  }
 
   // Strict Geolocation Check
   if (
@@ -197,7 +191,9 @@ export async function rotateSession(
 
   // Rotate the token
   await sessionModel.incrementRotationCounter(session.id);
-  await sessionModel.updateLastActive(session.id, now);
+  if (!session.is_paused) {
+    await sessionModel.updateLastActive(session.id, now);
+  }
   const newCounter = (session.rotation_counter || 0) + 1;
   const newRefreshToken = createRefreshTokenString(session.id, newCounter);
 

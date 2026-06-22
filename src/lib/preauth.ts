@@ -47,19 +47,20 @@ export async function invalidatePreauthSession(env: Env, token: string): Promise
  * Returns the number of attempts remaining (from 3 down to 0).
  */
 export async function recordFailedPreauthAttempt(cache: Cache, token: string, env: Env): Promise<number> {
-  const cacheKey = `preauth_fail:${token}`;
-  const preauthTtl = Number(env.PREAUTH_TTL_SECONDS) || 300;
+  const cacheKey = `preauth_state:${token}`;
+  const state = await cacheUtils.get<{ nonce: string, failedAttempts: number }>(cache, cacheKey);
+  if (!state) return 0;
   
-  const current = await cacheUtils.get<{ count: number }>(cache, cacheKey);
-  const count = (current?.count || 0) + 1;
+  const failedAttempts = (state.failedAttempts || 0) + 1;
   
-  if (count >= 3) {
+  if (failedAttempts >= 3) {
     const sessionModel = new SessionModel(env.DB);
     await sessionModel.deletePendingTotpSession(token);
     await cacheUtils.delete(cache, cacheKey);
     return 0;
   }
   
-  await cacheUtils.set(cache, cacheKey, { count }, preauthTtl);
-  return 3 - count;
+  const preauthTtl = Number(env.PREAUTH_TTL_SECONDS) || 300;
+  await cacheUtils.set(cache, cacheKey, { ...state, failedAttempts }, preauthTtl);
+  return 3 - failedAttempts;
 }

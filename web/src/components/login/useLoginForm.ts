@@ -4,7 +4,9 @@ import {
   validateUsername,
   isPasswordLeaked,
   hashTotpToken,
-  hashPasswordClient
+  hashPasswordClient,
+  deriveStoredHashClient,
+  hmacSha256
 } from "../../utils/auth";
 import { setAccessToken } from "../../utils/token";
 import { prelogin, login, ApiError, migratePassword } from "../../services";
@@ -42,6 +44,8 @@ export const useLoginForm = ({
   const [recoveryKey, setRecoveryKey] = useState("");
   const [keepLoggedIn, setKeepLoggedIn] = useState(false);
   const [passwordVersion, setPasswordVersion] = useState<number>(1);
+  const [nonce, setNonce] = useState<string | undefined>(undefined);
+  const [serverSalt, setServerSalt] = useState<string | null | undefined>(undefined);
 
   // Server response step requirements
   const [requiresPassword, setRequiresPassword] = useState(true);
@@ -136,6 +140,8 @@ export const useLoginForm = ({
       setRequiresPassword(data.requires_password);
       setRequiresTotp(data.requires_totp);
       setPasswordVersion(data.password_version ?? 1);
+      setNonce(data.nonce);
+      setServerSalt(data.serverSalt);
       setLoginStep(2);
     } catch (err: any) {
       if (err instanceof ApiError) {
@@ -167,7 +173,12 @@ export const useLoginForm = ({
       };
       if (requiresPassword) {
         if (passwordVersion === 2) {
-          body.password = await hashPasswordClient(password, username);
+          if (!nonce || !serverSalt) {
+            throw new Error(t("auth.sessionExpired", "Session expired, please start over"));
+          }
+          const clientHash = await hashPasswordClient(password, username);
+          const storedHash = await deriveStoredHashClient(clientHash, serverSalt);
+          body.password = await hmacSha256(storedHash, nonce);
         } else {
           body.password = password;
         }
@@ -218,6 +229,8 @@ export const useLoginForm = ({
     setError("");
     setTurnstileToken(null);
     setUseRecovery(false);
+    setNonce(undefined);
+    setServerSalt(undefined);
   };
 
   return {

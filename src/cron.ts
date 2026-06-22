@@ -28,15 +28,6 @@ export async function handleScheduled(
       console.error("[Cron] Inactive users cleanup failed:", e);
     }
 
-    // Clean up expired sessions and temporary TOTP pre-auth sessions
-    try {
-      const sessionModel = new SessionModel(env.DB);
-      const idleTimeoutMin = Number(env.SESSION_IDLE_TIMEOUT_MINUTES) || 60;
-      await sessionModel.cleanupExpired(now, idleTimeoutMin * 60);
-    } catch (e) {
-      console.error("[Cron] Expired sessions cleanup failed:", e);
-    }
-
     // Clean up global resolution logs based on retention settings
     try {
       await logModel.cleanupGlobal();
