@@ -271,6 +271,7 @@ export const SessionLockCard: React.FC<SessionLockCardProps> = ({ user, onRefres
                 onChange={setNewPin}
                 type="password"
                 disabled={loading}
+                autoFocus
               />
             </FormGroup>
 
