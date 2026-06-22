@@ -1,6 +1,5 @@
 import { Env, User } from '../types';
 import { SessionModel } from '../models/session';
-import { UserModel } from '../models/user';
 import { generateId } from '../utils/crypto';
 import { base64urlEncode, base64urlDecode } from './jwt';
 import { calculateDistanceInKm } from '../utils/geo';
