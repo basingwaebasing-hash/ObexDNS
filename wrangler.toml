@@ -15,7 +15,7 @@ binding = "ASSETS"
 # D1 Database for Profiles, Rules and Logs
 [[d1_databases]]
 binding = "DB"
-database_name = "obex_db"
+database_name = "redsky"
 # This field must be filled with your database ID; otherwise the deployment will fail.
 database_id = "7bd93c70-c718-40a7-872c-4f88eb4e0154"
 
