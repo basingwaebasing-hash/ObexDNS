@@ -114,4 +114,11 @@ export class ProfileModel {
     const result = await this.db.prepare("UPDATE profiles SET list_updated_at = ? WHERE id = ?").bind(now, profileId).run();
     return result.success;
   }
+
+  async getRecentlyActiveProfiles(limit: number): Promise<{id: string}[]> {
+    const { results } = await this.db.prepare(
+      "SELECT id FROM profiles ORDER BY last_active_at DESC LIMIT ?"
+    ).bind(limit).all<{ id: string }>();
+    return results;
+  }
 }
