@@ -6,9 +6,19 @@ import { dnsCache } from "./cache";
 import { connect } from 'cloudflare:sockets';
 import { isSafeUrl } from "../utils/validator";
 
+const LOG_BATCH_SIZE = 50;
+let logBatch: any[] = [];
+
+export async function flushLogs(db: any) {
+  if (logBatch.length === 0) return;
+  const logsToInsert = [...logBatch];
+  logBatch = [];
+  const logModel = new LogModel(db);
+  await logModel.insertBatch(logsToInsert);
+}
+
 export const pipelineResolver = {
   async resolve(request: Request, query: DNSQuery, context: Context, settings: ProfileSettings, action: 'PASS', reason?: string): Promise<ResolutionResult> {
-    const logModel = new LogModel(context.env.DB);
     let upstreamUrl = settings.upstream[0] || "https://security.cloudflare-dns.com/dns-query";
     if (!isSafeUrl(upstreamUrl)) {
       return { 
@@ -118,7 +128,7 @@ export const pipelineResolver = {
         }
 
         const latency = Date.now() - context.startTime;
-        await logModel.insert({
+        const logEntry = {
           profile_id: context.profileId,
           access_point_id: context.accessPointId,
           timestamp: Math.floor(Date.now() / 1000),
@@ -133,7 +143,12 @@ export const pipelineResolver = {
           upstream: upstreamUrl,
           latency,
           ecs
-        });
+        };
+
+        logBatch.push(logEntry);
+        if (logBatch.length >= LOG_BATCH_SIZE) {
+          await flushLogs(context.env.DB);
+        }
 
         if (answer.length > 0) {
           dnsCache.set(`${context.profileId}:${query.name}:${query.type}`, {
@@ -171,7 +186,6 @@ export const pipelineResolver = {
   },
 
   async block(request: Request, query: DNSQuery, context: Context, settings: ProfileSettings, action: 'BLOCK' | 'REDIRECT', reason: string, customAnswer?: string, responseType?: string): Promise<ResolutionResult> {
-    const logModel = new LogModel(context.env.DB);
     const clientIp = request.headers.get("CF-Connecting-IP") || "127.0.0.1";
     let answer: Uint8Array;
     let displayAnswer = customAnswer || "";
@@ -226,7 +240,7 @@ export const pipelineResolver = {
     }
 
     const latency = Date.now() - context.startTime;
-    context.ctx.waitUntil(logModel.insert({
+    const logEntry = {
       profile_id: context.profileId,
       access_point_id: context.accessPointId,
       timestamp: Math.floor(Date.now() / 1000),
@@ -238,7 +252,14 @@ export const pipelineResolver = {
       reason,
       answer: displayAnswer,
       latency
-    }));
+    };
+
+    context.ctx.waitUntil((async () => {
+      logBatch.push(logEntry);
+      if (logBatch.length >= LOG_BATCH_SIZE) {
+        await flushLogs(context.env.DB);
+      }
+    })());
 
     return { answer, ttl: 3600, action, reason, latency };
   }
