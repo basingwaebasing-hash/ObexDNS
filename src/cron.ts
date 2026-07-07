@@ -3,7 +3,11 @@ import { Env, ExecutionContext } from './types';
 import { LogModel } from './models/log';
 import { UserModel } from './models/user';
 import { ProfileModel } from './models/profile';
+import { ProfileBloomModel } from './models/profileBloom';
 import { syncNextListForProfile } from './utils/sync';
+import { flushLogs } from './pipeline/resolver';
+import { bloomMemoryMap } from './pipeline/cache';
+import { BloomFilter } from './utils/bloom';
 
 /**
  * Handles cron-scheduled events to run background cleanup and list synchronization.
@@ -46,6 +50,12 @@ export async function handleScheduled(
       console.error("[Cron] Global log cleanup failed:", e);
     }
 
+    try {
+      await flushLogs(env.DB);
+    } catch (e) {
+      console.error("[Cron] Flush logs failed:", e);
+    }
+
     // ── SYNC ──────────────────────────────────────────────────────────────────
     // Processes ONE list for a single stale profile per trigger.
     // The profile's active Bloom Filter is NOT updated until all its lists are
@@ -71,6 +81,36 @@ export async function handleScheduled(
       }
     } catch (e) {
       console.error("[Cron] Sync phase failed:", e);
+    }
+
+    // ── WARMUP ────────────────────────────────────────────────────────────────
+    try {
+      const profileModel = new ProfileModel(env.DB);
+      const bloomModel = new ProfileBloomModel(env.DB);
+      const recentProfiles = await profileModel.getRecentlyActiveProfiles(5);
+      
+      const cache = (caches as any).default;
+      
+      for (const profile of recentProfiles) {
+        if (!bloomMemoryMap.has(profile.id)) {
+          const buffer = await bloomModel.getProfileBloom(profile.id);
+          if (buffer) {
+            const uint8 = new Uint8Array(buffer);
+            const bloom = BloomFilter.fromUint8Array(uint8);
+            bloomMemoryMap.set(profile.id, { bloom, ts: Date.now() });
+            
+            const bloomInternalUrl = `https://redsky.local/bloom-bin/${profile.id}`;
+            ctx.waitUntil(cache.put(bloomInternalUrl, new Response(uint8, {
+              headers: { 
+                'Content-Type': 'application/octet-stream',
+                'Cache-Control': 'public, max-age=3600' 
+              }
+            })));
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[Cron] Warmup phase failed:", e);
     }
   } catch (e: any) {
     console.error("[Cron] Critical Failure:", e.message);
