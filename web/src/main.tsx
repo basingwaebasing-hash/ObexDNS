@@ -150,9 +150,9 @@ window.fetch = async function (input, init) {
 
 // Clear session-based logs cache on new session startup
 if (typeof window !== "undefined" && "caches" in window) {
-  if (!sessionStorage.getItem("obex_session_active")) {
-    caches.delete("obex-dns-logs-v1").catch(() => {});
-    sessionStorage.setItem("obex_session_active", "true");
+  if (!sessionStorage.getItem("redsky_session_active")) {
+    caches.delete("redsky-dns-logs-v1").catch(() => {});
+    sessionStorage.setItem("redsky_session_active", "true");
   }
 }
 
