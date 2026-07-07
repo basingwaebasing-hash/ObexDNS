@@ -1,5 +1,5 @@
 {
-  "name": "obexdns",
+  "name": "redskydns",
   "version": "1.0",
   "private": true,
   "description": "Protective DoH Resolver based on Cloudflare Workers",
@@ -11,10 +11,10 @@
     "build": "npm run ui:build",
     "build:pages": "npm run ui:build && npx esbuild src/index.ts --bundle --outfile=static/_worker.js --platform=neutral --format=esm --minify --external:cloudflare:*",
     "postinstall": "npm run ui:install",
-    "db:setup": "wrangler d1 create obex_db",
-    "db:migrate:dev": "wrangler d1 migrations apply obex_db --local",
-    "db:migrate:prod": "echo \"y\" | wrangler d1 migrations apply obex_db --remote",
-    "db:status": "wrangler d1 execute obex_db --local --command='SELECT name FROM sqlite_master WHERE type=\"table\"'",
+    "db:setup": "wrangler d1 create redsky_db",
+    "db:migrate:dev": "wrangler d1 migrations apply redsky_db --local",
+    "db:migrate:prod": "echo \"y\" | wrangler d1 migrations apply redsky_db --remote",
+    "db:status": "wrangler d1 execute redsky_db --local --command='SELECT name FROM sqlite_master WHERE type=\"table\"'",
     "lint": "eslint . --ext .ts,.tsx",
     "ui:dev": "cd web && npm run dev",
     "ui:build": "cd web && npm run build",
@@ -31,7 +31,7 @@
     "@cloudflare/workers-types": "^4.20260621.1",
     "concurrently": "^10.0.3",
     "typescript": "^6.0.3",
-    "wrangler": "^4.103.0"
+    "wrangler": "^4.105.0"
   },
   "overrides": {
     "esbuild": "^0.28.1"

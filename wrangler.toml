@@ -1,9 +1,11 @@
-name = "obex-dns"
+name = "redsky-dns"
 main = "src/index.ts"
 compatibility_date = "2026-02-28"
 compatibility_flags = ["nodejs_compat"]
 # account_id = ""
 minify = true
+# workers_dev = false
+preview_urls = false
 
 [build]
 command = "npm run build"
@@ -15,17 +17,20 @@ binding = "ASSETS"
 # D1 Database for Profiles, Rules and Logs
 [[d1_databases]]
 binding = "DB"
-database_name = "obex_db"
+database_name = "redsky_db"
 # This field must be filled with your database ID; otherwise the deployment will fail.
-database_id = "7bd63f70-c718-40a7-0000c-4f89jc4e0541"
+database_id = "13d8c24f-064a-40d6-8b10-fa70bb3f79ab"
 
 [triggers]
-crons = ["0 * * * *"]
+crons = ["* * * * *"]
 
 [placement]
 # mode = "targeted"
 # region = "aws:ap-southeast-1"
-mode = "smart"
+# Or
+# mode = "smart"
+# Or
+mode = "off"
 
 [observability]
 enabled = true
@@ -124,20 +129,16 @@ PRESET_UPSTREAMS = """
     "url": "https://family.adguard-dns.com/dns-query"
   },
   {
-    "label": "Cloudflare (1.1.1.1)",
-    "url": "1.1.1.1"
-  },
-  {
     "label": "Cloudflare Security (1.1.1.2)",
-    "url": "1.1.1.2"
+    "url": "tcp://1.1.1.2:53"
   },
   {
-    "label": "Quad9 (9.9.9.9)",
-    "url": "9.9.9.9:9953"
+    "label": "Quad9 ECS (9.9.9.11)",
+    "url": "tcp://9.9.9.11:9953"
   },
   {
     "label": "Google (8.8.8.8)",
-    "url": "8.8.8.8"
+    "url": "tcp://8.8.8.8:53"
   }
 ]
 """
@@ -165,4 +166,25 @@ PRESET_EXTERNAL_FILTERS = """
 """
 
 # Bloom Filter false positive rate
+# Restored to 0.0001 (1 in 10,000) — safe now because each cron trigger
+# processes only ONE list at a time (~100-150k domains), dramatically reducing
+# per-trigger CPU usage vs. the old all-at-once approach.
 BLOOM_FALSE_POSITIVE_RATE=0.0001
+
+# 1M domains @ p=0.0001: bitArray ≈ 2.4 MB (5 × 512KB D1 chunks)
+MAX_SYNC_DOMAINS=1000000
+
+# Maximum domains processed from a single list per cron trigger.
+MAX_LIST_DOMAINS=500000
+
+# Hard cap on log retention days (overrides per-profile user setting).
+# Prevents high-retention profiles (e.g. 360 days) from filling up D1's 500 MB limit.
+MAX_LOG_RETENTION_DAYS=90
+DEFAULT_LOG_RETENTION_DAYS=30
+
+NORMAL_USER_MAX_LOG_RETENTION_DAYS=7
+NORMAL_USER_DEFAULT_LOG_RETENTION_DAYS=1
+
+# Hard cap on log row count per profile. Acts as a circuit-breaker when write
+# rate temporarily exceeds cleanup rate (e.g. high-traffic profiles).
+MAX_LOGS_PER_PROFILE=500000

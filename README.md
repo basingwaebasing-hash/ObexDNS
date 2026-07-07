@@ -1,7 +1,8 @@
 <div align="center">
-  <img src="web/src/assets/obex_cat_eye_logo-256.webp" alt="Obex DNS Logo" width="128">
-  <h1>Obex DNS</h1>
+  <img src="web/src/assets/logo.png" alt="DNS Worker Logo" width="128">
+  <h1>DNS Worker</h1>
   <p>Protective DNS resolver based on Cloudflare Workers & D1</p>
+  <p>Protect your first hop on the internet</p>
   <p align="center">
     English | <a href="README_zh-CN.md">简体中文</a> | <a href="README_zh-TW.md">正體中文</a>
   </p>
@@ -14,13 +15,13 @@
 
 ## 📖 Introduction
 
-**Obex DNS** is a lightweight, scalable, and privacy-focused DNS resolution system. It runs entirely on Cloudflare's edge network, leveraging the ultra-fast response of Workers and the efficient storage of D1 database to provide users with a granular DNS (over HTTPS) control experience.
+**DNS Worker** is a lightweight, scalable, and privacy-focused DNS resolution system. It runs entirely on Cloudflare's edge network, leveraging the ultra-fast response of Workers and the efficient storage of D1 database to provide users with a granular DNS (over HTTPS) control experience.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Obein/ObexDNS)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Obein/DNS-Worker)
 
-### Why Obex DNS?
+### Why DNS Worker?
 
-| | Traditional DNS Services | Obex DNS |
+| | Traditional DNS Services | DNS Worker |
 |---|---|---|
 | **Hosting** | Requires a VPS or home server | Runs on Cloudflare's free tier — no server needed |
 | **Latency** | Depends on server location | Edge-computed in 300+ cities worldwide |
@@ -57,31 +58,31 @@ DoH (RFC 8484) is a protocol for performing DNS queries via encrypted HTTPS conn
 
 | User Login |
 |:---:|
-| ![Login](docs/screenshots/dns.obex-login.webp) |
+| ![Login](docs/screenshots/dns.redsky-login.webp) |
 
 | Setup Guide | Endpoints |
 |:---:|:---:|
-| ![Setup](docs/screenshots/dns.obex-setup.webp) | ![Endpoints](docs/screenshots/dns.obex-endpoints.webp) |
+| ![Setup](docs/screenshots/dns.redsky-setup.webp) | ![Endpoints](docs/screenshots/dns.redsky-endpoints.webp) |
 
 | Real-time Analytics | Request Destinations |
 |:---:|:---:|
-| ![Stats](docs/screenshots/dns.obex-stats.webp) | ![Destinations](docs/screenshots/dns.obex-stats_dest.webp) |
+| ![Stats](docs/screenshots/dns.redsky-stats.webp) | ![Destinations](docs/screenshots/dns.redsky-stats_dest.webp) |
 
 | Rule Management | External Filters |
 |:---:|:---:|
-| ![Rules](docs/screenshots/dns.obex-rules.webp) | ![Filters](docs/screenshots/dns.obex-filter.webp) |
+| ![Rules](docs/screenshots/dns.redsky-rules.webp) | ![Filters](docs/screenshots/dns.redsky-filter.webp) |
 
 | Resolution Logs | Log Detail |
 |:---:|:---:|
-| ![Resolution Logs](docs/screenshots/dns.obex-log.webp) | ![Log Detail](docs/screenshots/dns.obex-log_detail.webp) |
+| ![Resolution Logs](docs/screenshots/dns.redsky-log.webp) | ![Log Detail](docs/screenshots/dns.redsky-log_detail.webp) |
 
 | Profile Settings | Profile Select |
 |:---:|:---:|
-| ![Settings](docs/screenshots/dns.obex-settings.webp) | ![Profile Select](docs/screenshots/dns.obex-profile_select.webp) |
+| ![Settings](docs/screenshots/dns.redsky-settings.webp) | ![Profile Select](docs/screenshots/dns.redsky-profile_select.webp) |
 
 | Mobile Logs | Mobile Stats |
 |:---:|:---:|
-| ![Mobile Logs](docs/screenshots/dns.obex-mobile_log.webp) | ![Mobile Stats](docs/screenshots/dns.obex-mobile_stats.webp) |
+| ![Mobile Logs](docs/screenshots/dns.redsky-mobile_log.webp) | ![Mobile Stats](docs/screenshots/dns.redsky-mobile_stats.webp) |
 
 ---
 
@@ -150,13 +151,23 @@ npm run db:setup
 npm run db:migrate:dev
 ```
 
-3.  Start the development server:
+3.  Configure environment variables:
+    *   Create a `.dev.vars` file in the root directory and add a secure random JWT secret (required for session token signing):
+        ```env
+        JWT_SECRET=your_secure_random_string_here
+        ```
+    *   (Optional) Enable Envelope Encryption for sensitive credentials (like TOTP secrets and recovery keys) by adding a Key Encryption Key (KEK):
+        ```env
+        KEK_v1=your_secure_kek_v1_key_string
+        ```
+
+4.  Start the development server:
 
 ```bash
 npm run dev
 ```
 
-4.  Deploy online
+5.  Deploy online
 
 ```bash
 npm run deploy
@@ -164,10 +175,12 @@ npm run deploy
 
 ### Online Deployment (Cloudflare Dashboard)
 1.  **Fork this repo**: Click the `Fork` button at the top right to clone the repository to your own GitHub account.
-2.  **Create D1 Database**: Log in to the Cloudflare dashboard, go to `Workers & Pages` > `D1`, and create a new database (e.g., named `obex_db`), and copy the created database ID.
+2.  **Create D1 Database**: Log in to the Cloudflare dashboard, go to `Workers & Pages` > `D1`, and create a new database (e.g., named `redsky_db`), and copy the created database ID.
 3.  **Configure Database ID**: In your forked repository, edit the `wrangler.toml` file and replace `database_id` with the ID of the database you just created.
 4.  **Create Worker**: Go to Cloudflare dashboard `Workers & Pages` > `Create application` > `Create Worker`.
 5.  **Import from GitHub**: On the deployment page, select `Deploy from GitHub`, connect your forked project, and complete the authorized deployment.
+6.  **Configure JWT Secret**: Go to Cloudflare Dashboard -> `Workers & Pages` -> click on your Worker -> `Settings` -> `Variables` -> under `Environment Variables` click `Add Variable`. Set Name to `JWT_SECRET`, choose type `Secret`, input a secure random string as Value, and click `Save and Deploy`.
+7.  **Configure KEK for Envelope Encryption (Optional)**: To enable server-side envelope encryption for sensitive credentials (such as TOTP keys and recovery keys) in D1, add a variable named `KEK_v1`, type `Secret`, and input a secure key value. When you need to rotate the KEK key, add a new secret `KEK_v(N+1)` (e.g. `KEK_v2` -> `KEK_v3`, etc.) sequentially.
 
 ### Online Deployment to Cloudflare Pages (⚠️ Not Recommended)
 
@@ -184,7 +197,7 @@ If you wish to deploy the project using Cloudflare Pages (Advanced Mode):
     *   **Build output directory**: `static`
 4.  After the initial deployment, go to the Pages project's **Settings** > **Functions** > **D1 database bindings**, and add a binding:
     *   **Variable name**: `DB`
-    *   **D1 database**: Select your `obex_db` database.
+    *   **D1 database**: Select your `redsky_db` database.
 5.  Redeploy the Pages project for the bindings to take effect.
 
 ---
@@ -206,7 +219,7 @@ This project is licensed under the [AGPLv3](LICENSE) License.
 
 ## 📝 Summary
 
-Obex DNS gives you full control over your DNS resolution — with no servers to rent, no infrastructure to manage, and no compromises on privacy. By leveraging Cloudflare Workers' global edge network and D1 database, it delivers a production-ready Protective DNS service that is:
+DNS Worker gives you full control over your DNS resolution — with no servers to rent, no infrastructure to manage, and no compromises on privacy. By leveraging Cloudflare Workers' global edge network and D1 database, it delivers a production-ready Protective DNS service that is:
 
 -   **Free to run** on Cloudflare's generous free tier
 -   **Fast everywhere** thanks to 300+ edge locations worldwide
@@ -214,13 +227,13 @@ Obex DNS gives you full control over your DNS resolution — with no servers to 
 -   **Privacy-first** with encrypted DoH and flexible ECS controls
 -   **Easy to deploy** in minutes via one-click deploy or a simple `npm run deploy`
 
-Whether you're protecting a single device or managing DNS for your family, Obex DNS offers an elegant, self-hosted alternative to commercial DNS filtering services — without the cost or complexity.
+Whether you're protecting a single device or managing DNS for your family, DNS Worker offers an elegant, self-hosted alternative to commercial DNS filtering services — without the cost or complexity.
 
 <div align="center">
   <br>
-  <a href="https://deploy.workers.cloudflare.com/?url=https://github.com/Obein/ObexDNS">
+  <a href="https://deploy.workers.cloudflare.com/?url=https://github.com/Obein/DNS-Worker">
     <img src="https://deploy.workers.cloudflare.com/button" alt="Deploy to Cloudflare">
   </a>
   <br><br>
-  <b>If Obex DNS is useful to you, please consider giving it a ⭐</b>
+  <b>If DNS Worker is useful to you, please consider giving it a ⭐</b>
 </div>
