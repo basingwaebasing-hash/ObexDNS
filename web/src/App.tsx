@@ -5,9 +5,6 @@ import { Helmet } from "react-helmet-async";
 import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { GitHubCorner } from "./components/GithubCorner";
 import { lazyWithPreload } from "./utils/lazyWithPreload";
-import { DashboardHomeView } from "./views/DashboardHomeView";
-import { MainLayout } from "./layouts/MainLayout";
-import { NotFoundView } from "./views/NotFoundView";
 import { ProfileRoutes } from "./routes/ProfileRoutes";
 import type { Profile } from "./services";
 import { useTheme } from "./hooks/useTheme";
@@ -15,7 +12,6 @@ import { usePageMeta } from "./hooks/usePageMeta";
 import { useAuth } from "./hooks/useAuth";
 import { useProfiles } from "./hooks/useProfiles";
 import { IdleSessionLock } from "./components/IdleSessionLock";
-import { DeploymentGuideView } from "./views/DeploymentGuideView";
 import { loadLocale } from "./i18n/config";
 
 const AuthView = lazyWithPreload(() =>
@@ -24,6 +20,22 @@ const AuthView = lazyWithPreload(() =>
 
 const AccountView = lazyWithPreload(() =>
   import("./views/AccountView").then((m) => ({ default: m.AccountView })),
+);
+
+const DashboardHomeView = lazyWithPreload(() =>
+  import("./views/DashboardHomeView").then((m) => ({ default: m.DashboardHomeView })),
+);
+
+const NotFoundView = lazyWithPreload(() =>
+  import("./views/NotFoundView").then((m) => ({ default: m.NotFoundView })),
+);
+
+const MainLayout = lazyWithPreload(() =>
+  import("./layouts/MainLayout").then((m) => ({ default: m.MainLayout })),
+);
+
+const DeploymentGuideView = lazyWithPreload(() =>
+  import("./views/DeploymentGuideView").then((m) => ({ default: m.DeploymentGuideView })),
 );
 
 function App() {
@@ -80,7 +92,11 @@ function App() {
   const isDbMissing = (window as any).REDSKY_CONFIG?.isDbMissing;
   const isJwtSecretMissing = (window as any).REDSKY_CONFIG?.isJwtSecretMissing;
   if (isDbMissing || isJwtSecretMissing) {
-    return <DeploymentGuideView />;
+    return (
+      <Suspense fallback={<div className="h-screen flex items-center justify-center"><Spinner size={50} /></div>}>
+        <DeploymentGuideView />
+      </Suspense>
+    );
   }
 
   if (isLoggedIn === null) {
