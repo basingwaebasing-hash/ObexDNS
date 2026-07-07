@@ -1,3 +1,5 @@
+const localRateLimit = new Map<string, { count: number, reset: number }>();
+
 export const cacheUtils = {
   /**
    * 生成规范的缓存 URL
@@ -31,20 +33,32 @@ export const cacheUtils = {
 
   /**
    * 速率限制检查 (滑动窗口)
+   * Menggunakan in-memory Map (Isolate-local) untuk menghindari race condition Cache API
    */
   async isRateLimited(cache: Cache, key: string, limit: number, windowSec: number): Promise<boolean> {
-    const cacheKey = `ratelimit:${key}`;
-    const current = await this.get<{ count: number, reset: number }>(cache, cacheKey);
-    
     const now = Math.floor(Date.now() / 1000);
-    if (!current || now > current.reset) {
-      await this.set(cache, cacheKey, { count: 1, reset: now + windowSec }, windowSec);
+    
+    // Sesekali bersihkan map dari key yang sudah kedaluwarsa untuk mencegah memory leak
+    if (Math.random() < 0.05) {
+      for (const [k, v] of localRateLimit.entries()) {
+        if (now > v.reset) localRateLimit.delete(k);
+      }
+    }
+
+    let local = localRateLimit.get(key);
+    if (local && now > local.reset) {
+      localRateLimit.delete(key);
+      local = undefined;
+    }
+
+    if (!local) {
+      localRateLimit.set(key, { count: 1, reset: now + windowSec });
       return false;
     }
 
-    if (current.count >= limit) return true;
+    if (local.count >= limit) return true;
 
-    await this.set(cache, cacheKey, { count: current.count + 1, reset: current.reset }, Math.max(1, current.reset - now));
+    local.count += 1;
     return false;
   }
 };
