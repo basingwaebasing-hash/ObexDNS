@@ -28,6 +28,32 @@ export class LogModel {
     return result.success;
   }
 
+  async insertBatch(logs: ResolutionLog[]): Promise<boolean> {
+    if (logs.length === 0) return true;
+    const statements = logs.map(log => 
+      this.db.prepare(
+        "INSERT INTO logs (profile_id, access_point_id, timestamp, client_ip, geo_country, domain, record_type, action, reason, answer, dest_geoip, ecs, upstream, latency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      ).bind(
+        log.profile_id,
+        log.access_point_id || null,
+        log.timestamp,
+        log.client_ip,
+        log.geo_country || null,
+        log.domain,
+        log.record_type,
+        log.action,
+        log.reason || null,
+        log.answer || null,
+        log.dest_geoip || null,
+        log.ecs || null,
+        log.upstream || null,
+        log.latency || null,
+      )
+    );
+    const results = await this.db.batch(statements);
+    return results.every(r => r.success);
+  }
+
   async getLogs(profileId: string, options: { since: number, until: number, status?: string, search?: string, before?: number, limit?: number, access_point_id?: string, dest_country?: string, isp?: string, export?: boolean }): Promise<ResolutionLog[]> {
     let queryStr = "";
     if (options.export) {
