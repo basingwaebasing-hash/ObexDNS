@@ -3,7 +3,7 @@ export const cacheUtils = {
    * 生成规范的缓存 URL
    */
   generateCacheUrl(key: string): string {
-    return `https://obex.local/cache/${encodeURIComponent(key)}`;
+    return `https://redsky.local/cache/${encodeURIComponent(key)}`;
   },
 
   async get<T>(cache: Cache, key: string): Promise<T | null> {

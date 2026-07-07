@@ -2,7 +2,7 @@ import React from "react";
 import { H3, Intent, Callout } from "@blueprintjs/core";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
-import LogoIcon from "../assets/obex_cat_eye_logo-256.webp";
+import LogoIcon from "../assets/logo.png";
 import { SignupUsernameStep } from "./signup/SignupUsernameStep";
 import { SignupPasswordStep } from "./signup/SignupPasswordStep";
 import { SignupTotpStep } from "./signup/SignupTotpStep";
@@ -98,7 +98,7 @@ export const SignupWizard: React.FC<SignupWizardProps> = ({
         )}
         <img
           src={LogoIcon}
-          alt="Obex DNS Logo"
+          alt="DNS Worker Logo"
           className="w-20 h-20 object-contain"
         />
         <H3 className="font-bold tracking-tight text-2xl mt-4">

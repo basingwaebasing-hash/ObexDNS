@@ -18,8 +18,8 @@ export const pipeline = {
     };
 
     // 特殊域名 & 缓存检查 (L1)
-    if (query.name.toLowerCase() === 'obex' && query.type === 'TXT') {
-      const answer = buildResponse(query.raw, 'TXT', context.profileId || 'obex');
+    if (query.name.toLowerCase() === 'redsky' && query.type === 'TXT') {
+      const answer = buildResponse(query.raw, 'TXT', context.profileId || 'redsky');
       return { answer, ttl: 60, action: "PASS", reason: "Internal Verification", latency: Date.now() - context.startTime, timings: { total: Date.now() - context.startTime } };
     }
 

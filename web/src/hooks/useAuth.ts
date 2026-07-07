@@ -12,8 +12,10 @@ import type { UserInfo } from "../services";
 const clearCsrfToken = () => {
   document.cookie = "csrf_token=; Max-Age=0; path=/; Secure; SameSite=Lax";
   try {
-    sessionStorage.removeItem("obex_session_active");
-    sessionStorage.removeItem("obex_session_locked");
+    sessionStorage.removeItem("redsky_session_active");
+    sessionStorage.removeItem("redsky_session_locked");
+    sessionStorage.removeItem("redsky_username");
+    sessionStorage.removeItem("redsky_user_id");
   } catch {}
 };
 
@@ -52,6 +54,12 @@ export function useAuth(toasterRef: React.RefObject<OverlayToaster | null>) {
       try {
         const meData = await getMe();
         setCurrentUser(meData);
+        if (meData.username) {
+          sessionStorage.setItem("redsky_username", meData.username);
+        }
+        if (meData.id) {
+          sessionStorage.setItem("redsky_user_id", meData.id);
+        }
 
         if (meData.timezone) {
           setSystemTimeZone(meData.timezone);
@@ -129,11 +137,11 @@ export function useAuth(toasterRef: React.RefObject<OverlayToaster | null>) {
     } finally {
       if (typeof window !== "undefined" && "caches" in window) {
         try {
-          await caches.delete("obex-dns-logs-v1");
+          await caches.delete("redsky-dns-logs-v1");
         } catch {}
       }
       try {
-        sessionStorage.removeItem("obex_session_active");
+        sessionStorage.removeItem("redsky_session_active");
       } catch {}
       clearCsrfToken();
       setIsLoggedIn(false);

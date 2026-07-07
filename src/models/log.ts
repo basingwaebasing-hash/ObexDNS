@@ -28,13 +28,22 @@ export class LogModel {
     return result.success;
   }
 
-  async getLogs(profileId: string, options: { since: number, until: number, status?: string, search?: string, before?: number, limit?: number, access_point_id?: string, dest_country?: string, isp?: string }): Promise<ResolutionLog[]> {
-    let queryStr = `
-      SELECT l.id, l.timestamp, l.domain, l.action, l.record_type, l.latency, l.answer, l.geo_country, l.reason, l.access_point_id, ap.name as access_point_name 
-      FROM logs l
-      LEFT JOIN access_points ap ON l.access_point_id = ap.id
-      WHERE l.profile_id = ? AND l.timestamp >= ? AND l.timestamp <= ?
-    `;
+  async getLogs(profileId: string, options: { since: number, until: number, status?: string, search?: string, before?: number, limit?: number, access_point_id?: string, dest_country?: string, isp?: string, export?: boolean }): Promise<ResolutionLog[]> {
+    let queryStr = "";
+    if (options.export) {
+      queryStr = `
+        SELECT l.profile_id, l.access_point_id, l.timestamp, l.client_ip, l.geo_country, l.domain, l.record_type, l.action, l.reason, l.answer, l.dest_geoip, l.ecs, l.upstream, l.latency
+        FROM logs l
+        WHERE l.profile_id = ? AND l.timestamp >= ? AND l.timestamp <= ?
+      `;
+    } else {
+      queryStr = `
+        SELECT l.id, l.timestamp, l.domain, l.action, l.record_type, l.latency, l.answer, l.geo_country, l.reason, l.access_point_id, ap.name as access_point_name 
+        FROM logs l
+        LEFT JOIN access_points ap ON l.access_point_id = ap.id
+        WHERE l.profile_id = ? AND l.timestamp >= ? AND l.timestamp <= ?
+      `;
+    }
     let params: any[] = [profileId, options.since, options.until];
     
     if (options.status) { queryStr += " AND l.action = ?"; params.push(options.status); }
@@ -44,11 +53,15 @@ export class LogModel {
     if (options.dest_country) { queryStr += " AND json_extract(l.dest_geoip, '$.country_code') = ?"; params.push(options.dest_country.toUpperCase()); }
     if (options.isp) { queryStr += " AND json_extract(l.dest_geoip, '$.isp') = ?"; params.push(options.isp); }
     
-    let limit = options.limit !== undefined && !isNaN(options.limit) && options.limit > 0 ? options.limit : 50;
-    if (limit > 100) {
-      limit = 100;
+    if (options.export) {
+      queryStr += " ORDER BY l.timestamp DESC LIMIT 50000";
+    } else {
+      let limit = options.limit !== undefined && !isNaN(options.limit) && options.limit > 0 ? options.limit : 50;
+      if (limit > 100) {
+        limit = 100;
+      }
+      queryStr += ` ORDER BY l.timestamp DESC LIMIT ${limit}`;
     }
-    queryStr += ` ORDER BY l.timestamp DESC LIMIT ${limit}`;
     
     const { results } = await this.db.prepare(queryStr).bind(...params).all<ResolutionLog>();
     return results;
@@ -81,36 +94,73 @@ export class LogModel {
   }
 
   /**
-   * 全局清理过期日志 (基于各个 Profile 的 settings)
-   * 采用 Profile 逐个清理的方式，能完美利用 idx_logs_profile_time (profile_id, timestamp) 索引，避免全表扫描。
+   * Global log cleanup: runs on every cron trigger.
+   *
+   * Applies two independent safety caps per profile:
+   *   1. Time-based: deletes logs older than min(user_setting, MAX_LOG_RETENTION_DAYS).
+   *      The global cap prevents users from setting arbitrarily long retention periods
+   *      (e.g. 360 days) that would cause D1 to overflow.
+   *   2. Row-based: if the profile still has more than MAX_LOGS_PER_PROFILE rows after
+   *      the time-based cleanup, the oldest excess rows are deleted. This acts as a
+   *      circuit-breaker when write rate temporarily exceeds cleanup rate.
+   *
+   * @param maxRetentionDays - Hard cap on log retention days (default 90).
+   * @param maxLogsPerProfile - Hard cap on row count per profile (default 500_000).
    */
-  async cleanupGlobal(): Promise<void> {
-    // 获取所有 profile 以及对应的 settings
+  async cleanupGlobal(
+    maxRetentionDays = 90,
+    maxLogsPerProfile = 500_000,
+  ): Promise<void> {
     const { results: profiles } = await this.db.prepare(
       "SELECT id, settings FROM profiles"
     ).all<{id: string, settings: string}>();
-    
-    // 针对每个 profile，解析出保留天数并删除过期日志
+
+    const statements = [];
+
     for (const profile of profiles) {
+      // ── 1. Time-based cleanup ────────────────────────────────────────────────
       let days = 30;
       try {
         const settings = JSON.parse(profile.settings);
-        if (settings && settings.log_retention_days !== undefined && settings.log_retention_days !== null) {
+        if (settings?.log_retention_days != null) {
           days = Number(settings.log_retention_days);
         }
-      } catch (e) {
-        // 忽略解析错误，使用默认的 30 天
+      } catch {
+        // Use default on parse error
       }
-      
-      const threshold = Math.floor(Date.now() / 1000 - (days * 24 * 3600));
-      
-      // 此查询完美利用了 (profile_id, timestamp) 联合索引，执行效率极高
-      await this.db.prepare(
-        "DELETE FROM logs WHERE profile_id = ? AND timestamp < ?"
-      )
-        .bind(profile.id, threshold)
-        .run();
+
+      // Enforce global hard cap: user setting cannot exceed maxRetentionDays
+      const effectiveDays = Math.min(days, maxRetentionDays);
+      const threshold = Math.floor(Date.now() / 1000 - (effectiveDays * 24 * 3600));
+
+      statements.push(
+        this.db.prepare(
+          "DELETE FROM logs WHERE profile_id = ? AND timestamp < ?"
+        ).bind(profile.id, threshold)
+      );
+
+      // ── 2. Row-count cap (circuit-breaker) ──────────────────────────────────
+      // Delete oldest rows that exceed maxLogsPerProfile, using the
+      // (profile_id, timestamp) composite index for efficiency.
+      statements.push(
+        this.db.prepare(`
+          DELETE FROM logs
+          WHERE profile_id = ?
+            AND id IN (
+              SELECT id FROM logs
+              WHERE profile_id = ?
+              ORDER BY timestamp ASC
+              LIMIT MAX(0, (SELECT COUNT(*) FROM logs WHERE profile_id = ?) - ?)
+            )
+        `).bind(profile.id, profile.id, profile.id, maxLogsPerProfile)
+      );
     }
+
+    if (statements.length > 0) {
+      await this.db.batch(statements);
+    }
+
+    console.log(`[LogModel] cleanupGlobal: processed ${profiles.length} profile(s), cap=${maxRetentionDays}d/${maxLogsPerProfile}rows`);
   }
 
   async getSummary(profileId: string, since: number, until: number, search?: string, accessPointId?: string) {

@@ -23,7 +23,7 @@ export const pipelineConfig = {
     // 检查 L2 Cache API
     const cache = (caches as any).default;
     const profileCacheKey = `profile_v6:${profileId}`;
-    const bloomInternalUrl = `https://obex.local/bloom-bin/${profileId}`;
+    const bloomInternalUrl = `https://redsky.local/bloom-bin/${profileId}`;
     
     let apiCached = await cacheUtils.get<any>(cache, profileCacheKey);
     let bloom: BloomFilter | undefined;

@@ -6,7 +6,7 @@ import { Env, ExecutionContext } from '../types';
  * and caches the response on Cloudflare Edge nodes for 30 days (1 month).
  */
 export async function handleMapDataRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-  const cacheKey = new Request(new URL('https://obex.local/world-110m-v2.json'), request);
+  const cacheKey = new Request(new URL('https://redsky.local/world-110m-v2.json'), request);
   const cache = (caches as any).default;
 
   let response = await cache.match(cacheKey);
@@ -15,7 +15,7 @@ export async function handleMapDataRequest(request: Request, env: Env, ctx: Exec
       const url = 'https://openlayers.org/en/latest/examples/data/topojson/world-110m.json';
       const res = await fetch(url, {
         headers: {
-          'User-Agent': 'ObexDNS/1.0 (Cloudflare Worker Map Proxy)'
+          'User-Agent': 'DNS Worker/1.0 (Cloudflare Worker Map Proxy)'
         }
       });
       if (!res.ok) {

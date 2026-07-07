@@ -39,13 +39,13 @@ export function generateMobileConfig(profileKey: string, profileName: string, or
 				</dict>
 			</array>
 			<key>PayloadDescription</key>
-			<string>Obex DNS protects your network traffic</string>
+			<string>DNS Worker protects your network traffic</string>
 			<key>PayloadDisplayName</key>
-			<string>Obex DoH (${profileName})</string>
+			<string>Redsky DoH (${profileName})</string>
 			<key>PayloadIdentifier</key>
 			<string>com.apple.dnsSettings.managed.${payloadUUID}</string>
 			<key>PayloadName</key>
-			<string>Obex DoH (${profileName})</string>
+			<string>Redsky DoH (${profileName})</string>
 			<key>PayloadType</key>
 			<string>com.apple.dnsSettings.managed</string>
 			<key>PayloadUUID</key>
@@ -55,13 +55,13 @@ export function generateMobileConfig(profileKey: string, profileName: string, or
 		</dict>
 	</array>
 	<key>PayloadDescription</key>
-	<string>Obex DNS protects your network traffic</string>
+	<string>DNS Worker protects your network traffic</string>
 	<key>PayloadDisplayName</key>
-	<string>Obex - ${profileName}</string>
+	<string>Redsky - ${profileName}</string>
 	<key>PayloadIdentifier</key>
-	<string>obex.dns.profile</string>
+	<string>redsky.dns.profile</string>
 	<key>PayloadName</key>
-	<string>Obex - ${profileName}</string>
+	<string>Redsky - ${profileName}</string>
 	<key>PayloadRemovalDisallowed</key>
 	<false/>
 	<key>PayloadType</key>

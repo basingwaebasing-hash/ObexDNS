@@ -43,7 +43,7 @@ export async function handleProfilesCoreCollectionRequest(
     const defaultSettings: ProfileSettings = {
       upstream: ["https://security.cloudflare-dns.com/dns-query"],
       ecs: { enabled: true, use_client_ip: true },
-      log_retention_days: 30,
+      log_retention_days: user?.role !== 'admin' ? Number(env.NORMAL_USER_DEFAULT_LOG_RETENTION_DAYS) : Number(env.DEFAULT_LOG_RETENTION_DAYS) || 30,
       default_policy: 'ALLOW'
     };
     await profileModel.create({ id: newId, owner_id: user.id, name: body.name || "Unnamed Profile", settings: defaultSettings });
@@ -107,19 +107,34 @@ export async function handleProfilesCoreRequest(
   if (pathParts[3] === 'settings' && request.method === 'PATCH') {
     const newSettings = await request.json() as ProfileSettings;
     
+    // Enforce log retention limit for non-admin users
+    if (user?.role !== 'admin' && newSettings.log_retention_days != null) {
+      newSettings.log_retention_days = Math.min(newSettings.log_retention_days, Number(env.NORMAL_USER_MAX_LOG_RETENTION_DAYS) || 7);
+    }
+    
     if (newSettings.upstream && Array.isArray(newSettings.upstream)) {
       for (const url of newSettings.upstream) {
-        if (!url.startsWith('https://') && !url.startsWith('http://') && !url.startsWith('tcp://')) {
-          return new Response("Invalid upstream URL format. Only HTTP(S) and TCP are allowed.", { status: 400 });
+        // 允许三种格式：https://...、http://...、tcp://...、裸 IP（8.8.8.8）或 IP:port（8.8.8.8:5353）
+        // resolver.ts 中裸 IP 已被视为经典 TCP DNS，API 验证层对齐此行为。
+        const isHttps = url.startsWith('https://');
+        const isHttp  = url.startsWith('http://');
+        const isTcp   = url.startsWith('tcp://');
+        // 裸 host[:port]：不含 / 且不含 scheme
+        const isBareHost = !url.includes('//') && !url.startsWith('/');
+
+        if (!isHttps && !isHttp && !isTcp && !isBareHost) {
+          return new Response("Invalid upstream URL format. Only HTTP(S), TCP, or bare host[:port] are allowed.", { status: 400 });
         }
-        if (!isSafeUrl(url)) {
+        // 统一规范化后做安全检查（防 SSRF）
+        const normalized = isBareHost ? `tcp://${url}` : url;
+        if (!isSafeUrl(normalized)) {
           return new Response("Invalid upstream URL. Private networks and localhosts are not allowed.", { status: 400 });
         }
       }
     }
 
     await profileModel.updateSettings(profileId, newSettings);
-    const days = newSettings.log_retention_days || 30;
+    const days = newSettings.log_retention_days;
     const threshold = Math.floor(Date.now() / 1000 - (days * 24 * 3600));
     ctx.waitUntil(logModel.cleanup(profileId, threshold));
     await pipeline.clearCache(profileId);

@@ -8,7 +8,7 @@ import { USERNAME_REGEX } from "../../utils/validator";
  */
 export async function handleAuthConfigRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
-  const userModel = new UserModel(env.DB);
+  const userModel = new UserModel(env.DB, env);
 
   // 公开配置接口
   if (url.pathname === '/api/auth/config' && request.method === 'GET') {
@@ -22,7 +22,7 @@ export async function handleAuthConfigRequest(request: Request, env: Env): Promi
       turnstile_site_key: siteKey,
       turnstile_enabled_signup: signupEnabled === 'true',
       turnstile_enabled_login: loginEnabled === 'true',
-      optional_session_expiration_days: Number(env.OPTIONAL_SESSION_EXPIRATION_DAYS) || 30
+      optional_session_expiration_days: Number(env.OPTIONAL_SESSION_EXPIRATION_DAYS) || 7
     }), { headers: { 'Content-Type': 'application/json' } });
   }
 

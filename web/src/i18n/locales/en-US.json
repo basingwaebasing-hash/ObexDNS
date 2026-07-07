@@ -50,7 +50,7 @@
   },
   "auth": {
     "keepLoggedIn": "Keep me logged in for {{days}} days",
-    "login": "Login to Obex DNS",
+    "login": "Login to DNS Worker",
     "signup": "Create an account to start",
     "welcomeBack": "Welcome back, please enter your credentials",
     "protectInternet": "Protect your first hop on the internet",
@@ -116,7 +116,7 @@
   },
   "setup": {
     "title": "Setup Guide",
-    "subtitle": "Configure your devices to use Obex DNS and master your internet security.",
+    "subtitle": "Configure your devices to use DNS Worker and master your internet security.",
     "regionOptimization": "Region Optimization (Windows)",
     "otherRegion": "Other Region",
     "copied": "Copied to clipboard",
@@ -125,7 +125,7 @@
     "connected": "Connected",
     "notConnected": "Not Connected",
     "profileMatch": "Filtering through this profile.",
-    "profileMismatch": "Using Obex, but Profile ID mismatch.",
+    "profileMismatch": "Using Redsky, but Profile ID mismatch.",
     "verifyHint": "Click to verify after configuration.",
     "refreshStatus": "Refresh Status",
     "egressIp": "Egress IP Address",
@@ -178,12 +178,12 @@
     "android": "Android",
     "androidTitle": "Android 9+",
     "androidDesc": "Recommended to use apps like Intra, fill in DoH URL manually.",
-    "androidWarning": "Note: System 'Private DNS' uses DoT protocol, Obex currently supports DoH only.",
+    "androidWarning": "Note: System 'Private DNS' uses DoT protocol, Redsky currently supports DoH only.",
     "dynamicFromDomain": "Dynamic (from {{domain}})",
     "dynamicFromDomainV6": "Dynamic IPv6 (from {{domain}})",
     "linux": "Linux",
     "linuxTitle": "Linux (Cloudflared DoH Proxy)",
-    "linuxDesc": "Run a local DNS proxy to forward queries to Obex via DoH.",
+    "linuxDesc": "Run a local DNS proxy to forward queries to Redsky via DoH.",
     "linuxStep1": "Run this script to install cloudflared and setup systemd service (listening on 127.0.0.1:53).",
     "linuxStep2": "Change your system DNS to 127.0.0.1."
   },
@@ -308,7 +308,8 @@
     "actionRedirect": "Redirect",
     "statusPass": "PASS",
     "statusBlock": "BLOCK",
-    "statusRedirect": "REDIRECT"
+    "statusRedirect": "REDIRECT",
+    "export": "Export Logs"
   },
   "filtering": {
     "title": "External Filters",
@@ -329,6 +330,9 @@
     "neverSynced": "Never",
     "enabled": "Active",
     "disabled": "Error",
+    "statusNormal": "Active",
+    "statusOutdated": "Outdated",
+    "statusMissing": "Missing",
     "presetOisdBig": "OISD Big (Ads/Malware etc.)",
     "presetOisdNsfw": "OISD NSFW (Adult/Shock content)",
     "presetAdGuard": "AdGuard AdServers",
@@ -364,8 +368,9 @@
     "blockAll": "Block all queries",
     "logRetentionTitle": "Log Retention",
     "retentionDuration": "Duration",
-    "retentionDesc": "Expired logs will be cleared automatically from D1.",
+    "retentionDesc": "Logs are cleared automatically.",
     "ecsTitle": "EDNS Client Subnet (ECS)",
+    "ecsUpstreamHint": "Not all upstream DNS servers support ECS. For recursive resolvers like ControlD, ECS affects internal routing only.",
     "sendEcs": "Send ECS",
     "customSubnet": "Custom Subnet",
     "customIpv4": "Custom IPv4 Subnet",
@@ -396,10 +401,8 @@
     "retention1h": "1 Hour",
     "retention24h": "24 Hours",
     "retention7d": "7 Days",
-    "retention30d": "30 Days (Default)",
-    "retention180d": "180 Days",
-    "retention360d": "360 Days",
-    "retention720d": "720 Days (Maximum)",
+    "retention30d": "30 Days",
+    "retention90d": "90 Days (Maximum)",
     "blockModeTitle": "Block Response Mode",
     "blockModeDesc": "Response content when a domain is blocked",
     "default": "Default",
@@ -409,7 +412,8 @@
     "export": "Export Config",
     "exportSuccess": "Config exported successfully",
     "exportError": "Export failed",
-    "nameUpdateSuccess": "Profile name updated"
+    "nameUpdateSuccess": "Profile name updated",
+    "saving": "Saving..."
   },
   "account": {
     "title": "Account Settings",
@@ -451,7 +455,7 @@
     "clearLogsSuccess": "Logs cleared successfully",
     "confirmDeleteAccount": "WARNING: Are you sure you want to delete your account?\n\nAll DNS profiles, custom rules, and logs will be permanently deleted. This is irreversible!",
     "inactivityPolicy": "Inactivity Policy",
-    "inactivityDesc": "Accounts with no resolution activity for 180 days will be automatically deleted, including configs and logs.",
+    "inactivityDesc": "To protect user privacy and save resources, all query logs and DNS configurations for accounts with no resolution activity for 30 days will be cleared. The account itself will be removed after 90 days of no login activity.",
     "systemSettings": "System Settings (Admin)",
     "adminOnlyView": "Visible to admins only",
     "featureToggle": "Feature Toggle",
@@ -479,10 +483,14 @@
       "copied": "Copied!",
       "done": "Done — I've saved my keys"
     },
+    "sessions": {
+      "session": "Session"
+    },
     "activity": {
       "title": "Account Activity",
       "action": "Event",
       "time": "Time",
+      "session": "Session",
       "ip": "IP Address",
       "empty": "No activity recorded yet.",
       "loadMore": "Load More",
@@ -509,7 +517,7 @@
     }
   },
   "intro": {
-    "item1Title": "Obex Protective DNS",
+    "item1Title": "Redsky Protective DNS",
     "item1Desc": "Cloudflare Workers & D1 based DNS resolver, optimized for speed and security.",
     "item2Title": "DoH Privacy",
     "item2Desc": "Prevent hijacking and enhance privacy via DNS over HTTPS (RFC 8484) encryption.",
@@ -527,5 +535,37 @@
     "item8Desc": "Manage independent configurations for different devices or environments.",
     "item9Title": "Multiple Access Points",
     "item9Desc": "Configure unique sub-URLs for different devices to monitor logs and statistics independently."
+  },
+  "deploymentGuide": {
+    "title": "DNS Worker Setup & Deployment Guide",
+    "subtitle": "Your instance is not fully configured yet. Please complete the setup below to start using DNS Worker.",
+    "dbStatus": "D1 Database Binding (env.DB)",
+    "jwtStatus": "JWT Secret Key (env.JWT_SECRET)",
+    "configured": "Configured",
+    "missing": "Missing / Not Configured",
+    "refresh": "Refresh & Verify",
+    "methodCli": "CLI Deployment",
+    "methodDash": "Cloudflare Dashboard Deployment",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "stepDbTitle": "1. Bind D1 Database",
+    "stepDbDesc": "Create a D1 database and bind it to your worker. In your terminal, run:",
+    "stepDbCommand1": "wrangler d1 create redsky_db",
+    "stepDbDesc2": "Copy the output D1 database details and paste them into your wrangler.toml under [[d1_databases]]:",
+    "stepDbCommand2": "[[d1_databases]]\nbinding = \"DB\"\ndatabase_name = \"redsky_db\"\ndatabase_id = \"<YOUR_D1_DATABASE_ID>\"\nmigrations_dir = \"migrations\"",
+    "stepDbDashDesc": "1. Go to Cloudflare Dashboard -> Workers & Pages -> D1. Click \"Create Database\" and name it 'redsky_db'.\n2. Go to your Worker -> Settings -> Variables -> D1 Database Bindings -> Add Binding.\n3. Set Binding name to 'DB', and select 'redsky_db' as D1 database. Click Save.\n4. Go to your D1 database -> Console, copy and execute the SQL tables schema script from the migrations folder to set up database structure.",
+    "stepJwtTitle": "2. Set JWT Secret Key",
+    "stepJwtDesc": "DNS Worker requires a JWT secret for signing session tokens and API security. Configure it as a Cloudflare Secret:",
+    "stepJwtCommand1": "wrangler secret put JWT_SECRET",
+    "stepJwtDashDesc": "1. Go to your Worker -> Settings -> Variables -> Environment Variables -> Add Variable.\n2. Set Name to 'JWT_SECRET', choose type 'Secret', and enter a secure random string (e.g. 64 hex characters) as Value.\n3. Save and Deploy.",
+    "stepJwtDesc2": "Cloudflare Dashboard",
+    "stepJwtCommand2": "https://dash.cloudflare.com/",
+    "stepDeployTitle": "3. Deploy & Apply Migrations",
+    "stepDeployDesc": "Run the deploy command to compile frontend, apply D1 database schema migrations automatically, and publish configurations live:",
+    "stepDeployCommand": "npm run deploy",
+    "stepDeployDashDesc": "If you completed all configurations via the Cloudflare Dashboard, go to your Worker's Deployments tab, click 'Deploy' or 'Re-deploy' to publish the latest configurations.",
+    "jwtGeneratorTitle": "Secure JWT_SECRET Generator",
+    "jwtGeneratorDesc": "Use this cryptographically secure key generator to generate a random 64-character alphanumeric secret for your env.JWT_SECRET.",
+    "regenerate": "Regenerate"
   }
 }

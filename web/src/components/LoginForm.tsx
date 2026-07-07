@@ -2,7 +2,7 @@ import React from "react";
 import { H3, Intent, Callout } from "@blueprintjs/core";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
-import LogoIcon from "../assets/obex_cat_eye_logo-256.webp";
+import LogoIcon from "../assets/logo.png";
 import { LoginUsernameStep } from "./login/LoginUsernameStep";
 import { LoginCredentialsStep } from "./login/LoginCredentialsStep";
 import { useLoginForm } from "./login/useLoginForm";
@@ -86,7 +86,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         )}
         <img
           src={LogoIcon}
-          alt="Obex DNS Logo"
+          alt="DNS Worker Logo"
           className="w-20 h-20 object-contain"
         />
         <H3 className="font-bold tracking-tight text-2xl mt-4">
@@ -140,7 +140,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           onSubmit={handleStep2Submit}
           keepLoggedIn={keepLoggedIn}
           setKeepLoggedIn={setKeepLoggedIn}
-          optionalSessionExpirationDays={authConfig?.optional_session_expiration_days ?? 30}
+          optionalSessionExpirationDays={authConfig?.optional_session_expiration_days ?? 7}
         />
       )}
 

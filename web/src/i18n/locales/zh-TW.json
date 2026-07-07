@@ -50,7 +50,7 @@
   },
   "auth": {
     "keepLoggedIn": "保持登入 {{days}} 天",
-    "login": "登入 Obex DNS",
+    "login": "登入 DNS Worker",
     "signup": "創建帳戶以開始",
     "welcomeBack": "歡迎回來，請輸入憑據",
     "protectInternet": "保護您的網際網路第一跳",
@@ -100,8 +100,8 @@
     "confirmPin": "確認新 PIN 碼",
     "verifyIdentity": "驗證身份",
     "usePassword": "使用密碼驗證",
-    "use2fa": "使用雙重驗證碼",
-    "totpCode": "雙重驗證碼",
+    "use2fa": "使用兩步驗證碼",
+    "totpCode": "兩步驗證碼",
     "currentPassword": "目前密碼",
     "disablePinWarning": "停用 PIN 碼將徹底關閉空閒會话鎖定功能。",
     "pinFormatTip": "PIN 碼必須為 4 位數字",
@@ -116,7 +116,7 @@
   },
   "setup": {
     "title": "安裝指南",
-    "subtitle": "配置裝置以使用 Obex DNS 主掌您的網際網路安全。",
+    "subtitle": "配置裝置以使用 DNS Worker 主掌您的網際網路安全。",
     "regionOptimization": "接入地區優化 (Windows)",
     "otherRegion": "其他地區",
     "copied": "已複製到剪貼簿",
@@ -125,7 +125,7 @@
     "connected": "連接正常",
     "notConnected": "或未連接",
     "profileMatch": "您正透過此配置進行過濾。",
-    "profileMismatch": "您正使用 Obex，但配置 ID 不匹配。",
+    "profileMismatch": "您正使用 Redsky，但配置 ID 不匹配。",
     "verifyHint": "完成下方配置後，點擊按鈕驗證。",
     "refreshStatus": "重新整理狀態",
     "egressIp": "出口 IP 地址",
@@ -183,7 +183,7 @@
     "dynamicFromDomainV6": "動態 IPv6 (來自 \"{{domain}}\")",
     "linux": "Linux",
     "linuxTitle": "Linux (Cloudflared DoH 代理)",
-    "linuxDesc": "在本地執行輕量級 DNS 代理，透過 DoH 將解析請求加密轉發至 Obex。",
+    "linuxDesc": "在本地執行輕量級 DNS 代理，透過 DoH 將解析請求加密轉發至 Redsky。",
     "linuxStep1": "執行以下腳本安裝 cloudflared 並建立 systemd 服務（監聽 127.0.0.1:53）。",
     "linuxStep2": "將系統 DNS 修改為 127.0.0.1。"
   },
@@ -308,7 +308,8 @@
     "actionRedirect": "重新導向",
     "statusPass": "放行",
     "statusBlock": "攔截",
-    "statusRedirect": "重新導向"
+    "statusRedirect": "重新導向",
+    "export": "匯出日誌"
   },
   "filtering": {
     "title": "外部攔截清單",
@@ -329,6 +330,9 @@
     "neverSynced": "從未",
     "enabled": "正常",
     "disabled": "同步失敗",
+    "statusNormal": "正常",
+    "statusOutdated": "過時",
+    "statusMissing": "缺失",
     "presetOisdBig": "OISD Big (廣告/惡意軟體等攔截)",
     "presetOisdNsfw": "OISD NSFW (色情/震撼/成人內容攔截)",
     "presetAdGuard": "AdGuard AdServers (廣告伺服器)",
@@ -364,8 +368,9 @@
     "blockAll": "攔截所有查詢",
     "logRetentionTitle": "日誌留存",
     "retentionDuration": "留存時長",
-    "retentionDesc": "過期的日誌屆时將自動從資料庫中清除。",
+    "retentionDesc": "日誌將自動清除。",
     "ecsTitle": "EDNS 客戶端子網 (ECS)",
+    "ecsUpstreamHint": "並非所有上游 DNS 都支援 ECS。對於 ControlD 等遞迴解析器，ECS 僅影響其內部路由，不會傳遞給上游權威伺服器。",
     "sendEcs": "呈遞 ECS",
     "customSubnet": "自訂子網",
     "customIpv4": "自訂 IPv4 子網",
@@ -396,10 +401,8 @@
     "retention1h": "1 小時",
     "retention24h": "24 小時",
     "retention7d": "7 天",
-    "retention30d": "30 天 (默認)",
-    "retention180d": "180 天",
-    "retention360d": "360 天",
-    "retention720d": "720 天 (最大)",
+    "retention30d": "30 天",
+    "retention90d": "90 天 (最長)",
     "blockModeTitle": "攔截響應模式",
     "blockModeDesc": "當域名被攔截時返回的内容",
     "default": "默認",
@@ -409,7 +412,8 @@
     "export": "匯出配置",
     "exportSuccess": "配置成功匯出",
     "exportError": "配置匯出失敗，請稍後再試",
-    "nameUpdateSuccess": "配置名稱已更新"
+    "nameUpdateSuccess": "配置名稱已更新",
+    "saving": "正在儲存..."
   },
   "account": {
     "title": "帳號設定",
@@ -451,7 +455,7 @@
     "clearLogsSuccess": "日誌已成功清空",
     "confirmDeleteAccount": "警告：確定要註銷並刪除本帳號嗎？\n\n閣下所有 DNS 配置、自訂規則和查詢日誌將被永久刪除。此操作不可逆！",
     "inactivityPolicy": "活躍度政策",
-    "inactivityDesc": "為節省資源，180 天內無任何解析活動的帳號將被自動清理，包括其配置與所有關聯日誌。",
+    "inactivityDesc": "為保護用戶隱私並節省資源，超過 30 天無解析記錄的帳戶，其所有關聯查詢日誌及 DNS 配置將被自動清除。帳戶本身在 90 天無登錄後將予移除。",
     "systemSettings": "系統設定 (管理員)",
     "adminOnlyView": "僅管理員可見",
     "featureToggle": "功能開關",
@@ -479,10 +483,14 @@
       "copied": "已複製！",
       "done": "完成，我已保存密鑰"
     },
+    "sessions": {
+      "session": "會話"
+    },
     "activity": {
       "title": "帳號活動記錄",
       "action": "事件",
       "time": "時間",
+      "session": "會話",
       "ip": "IP 位址",
       "empty": "暫無活動記錄。",
       "loadMore": "載入更多",
@@ -509,7 +517,7 @@
     }
   },
   "intro": {
-    "item1Title": "Obex 保護性 DNS",
+    "item1Title": "Redsky 保護性 DNS",
     "item1Desc": "基於 Cloudflare Workers & D1 的 DNS 解析器，盡力提高速度與安全。",
     "item2Title": "DoH 隱私保護",
     "item2Desc": "透過 DNS over HTTPS (RFC 8484) 加密隧道防止劫持並增強隱私。",
@@ -527,5 +535,37 @@
     "item8Desc": "為不同裝置或網路環境創建並管理多個獨立配置。",
     "item9Title": "多存取點管理",
     "item9Desc": "為不同裝置配置專屬的 DNS 存取點，實現日誌和統計數據的精细化隔離與分析。"
+  },
+  "deploymentGuide": {
+    "title": "DNS Worker 部署與配置指南",
+    "subtitle": "您的系統實例尚未完全配置。請按照以下步驟完成部署以啟用 DNS Worker。",
+    "dbStatus": "D1 資料庫綁定 (env.DB)",
+    "jwtStatus": "JWT 金鑰 Secrets (env.JWT_SECRET)",
+    "configured": "已配置",
+    "missing": "缺失 / 未配置",
+    "refresh": "重新檢測並重新整理",
+    "methodCli": "CLI 命令行部署",
+    "methodDash": "Cloudflare 控制台部署",
+    "copy": "複製",
+    "copied": "已複製！",
+    "stepDbTitle": "1. 建立與綁定 D1 資料庫",
+    "stepDbDesc": "在 Cloudflare 中建立 D1 資料庫實例，在終端機執行以下命令：",
+    "stepDbCommand1": "wrangler d1 create redsky_db",
+    "stepDbDesc2": "複製終端機輸出的配置資訊，並貼到專案根目錄的 wrangler.toml 裡的 [[d1_databases]] 中：",
+    "stepDbCommand2": "[[d1_databases]]\nbinding = \"DB\"\ndatabase_name = \"redsky_db\"\ndatabase_id = \"<您的_D1_DATABASE_ID>\"\nmigrations_dir = \"migrations\"",
+    "stepDbDashDesc": "1. 登入 Cloudflare 網頁控制台 -> Workers & Pages -> D1 -> 建立資料庫 -> 命名為 'redsky_db'。\n2. 進入您的 Worker -> 設定 -> 變數 -> D1 資料庫綁定 -> 新增綁定。\n3. 將綁定名稱設定為 'DB'，D1 資料庫選擇 'redsky_db'，並儲存。\n4. 進入您的 D1 資料庫 -> 控制台，複製並執行 migrations 目錄下的 SQL 遷移腳本以初始化資料庫資料表結構。",
+    "stepJwtTitle": "2. 設定 JWT 金鑰 Secrets",
+    "stepJwtDesc": "系統使用 JWT 金鑰簽署工作階段權杖，請將其設定為 Cloudflare Secrets 金鑰：",
+    "stepJwtCommand1": "wrangler secret put JWT_SECRET",
+    "stepJwtDashDesc": "1. 進入您的 Worker -> 設定 -> 變數 -> 環境變數 -> 新增變數。\n2. 設定名稱為 'JWT_SECRET'，選擇類型為 '機密 (Secret)'，並在值中輸入一個隨機安全字串（例如 64 位十六位元字元）。\n3. 點擊儲存並部署。",
+    "stepJwtDesc2": "Cloudflare 網頁控制台",
+    "stepJwtCommand2": "https://dash.cloudflare.com/",
+    "stepDeployTitle": "3. 部署並套用遷移",
+    "stepDeployDesc": "執行專案部署命令。該命令會自動編譯前端靜態資源，執行 D1 資料庫遷移結構，並發布至 Cloudflare 遠端：",
+    "stepDeployCommand": "npm run deploy",
+    "stepDeployDashDesc": "如果您已透過 Cloudflare 網頁控制台完成了所有綁定配置，請進入您的 Worker 控制面板的 Deployments (部署) 索引標籤下，點擊“部署”按鈕進行發布上線。",
+    "jwtGeneratorTitle": "安全 JWT_SECRET 產生器",
+    "jwtGeneratorDesc": "使用此加密安全的隨機數產生器產生 64 位元字元的隨機字母數字組合，用於 env.JWT_SECRET。",
+    "regenerate": "重新產生"
   }
 }

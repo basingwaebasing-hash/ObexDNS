@@ -3,6 +3,7 @@ import { D1Database, ExecutionContext as CFExecutionContext } from "@cloudflare/
 export interface Env {
   DB: D1Database;
   ASSETS: any;
+  JWT_SECRET?: string;
   MAX_ACCESS_POINTS_PER_PROFILE?: string | number;
   MAX_PROFILES_PER_USER?: string | number;
   DEFAULT_SESSION_EXPIRATION_MINUTES?: string | number;
@@ -19,6 +20,11 @@ export interface Env {
   THROTTLE_ACTIVE_SEC?: string | number;
   SYNC_PROFILE_INTERVAL_SEC?: string | number;
   TURNSTILE_SECRET_KEY?: string;
+  MAX_SYNC_DOMAINS?: string | number;
+  MAX_LIST_DOMAINS?: string | number;
+  MAX_LOG_RETENTION_DAYS?: string | number;
+  MAX_LOGS_PER_PROFILE?: string | number;
+  NORMAL_USER_MAX_LOG_RETENTION_DAYS?: string | number;
   [key: string]: any;
 }
 

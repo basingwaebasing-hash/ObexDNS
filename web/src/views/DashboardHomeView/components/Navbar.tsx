@@ -3,7 +3,7 @@ import { Button, Intent, PopoverNext } from "@blueprintjs/core";
 import { LogOut, User as UserIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "../../../components/LanguageSwitcher";
-import LogoIcon from "../../../assets/obex_cat_eye_logo-256.webp";
+import LogoIcon from "../../../assets/logo.png";
 
 interface NavbarProps {
   isMobile: boolean;
@@ -19,11 +19,11 @@ export const Navbar: React.FC<NavbarProps> = ({ isMobile, navigate, handleLogout
       <div className="flex items-center gap-2">
         <img
           src={LogoIcon}
-          alt="Obex DNS"
+          alt="DNS Worker"
           className="w-8 h-8 object-contain"
         />
         <span className="font-bold text-lg tracking-tight dark:text-white">
-          Obex DNS
+          DNS Worker
         </span>
       </div>
       <div className="flex items-center gap-3">

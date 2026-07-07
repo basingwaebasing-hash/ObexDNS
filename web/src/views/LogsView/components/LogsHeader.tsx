@@ -34,6 +34,8 @@ export interface LogsHeaderProps {
   setSearchQuery: (val: string) => void;
   stats: { total: number; pass: number; block: number; redirect: number } | null;
   logRetentionDays: number;
+  onExport: () => void;
+  exporting: boolean;
 }
 
 export const LogsHeader: React.FC<LogsHeaderProps> = ({
@@ -61,6 +63,8 @@ export const LogsHeader: React.FC<LogsHeaderProps> = ({
   setSearchQuery,
   stats,
   logRetentionDays,
+  onExport,
+  exporting,
 }) => {
   const { t } = useTranslation();
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -129,7 +133,14 @@ export const LogsHeader: React.FC<LogsHeaderProps> = ({
               logRetentionDays={logRetentionDays}
             />
             {/* Real-time Refresh Toggle */}
-            <div className="flex items-center justify-between md:justify-end gap-4">
+            <div className="flex items-center justify-end gap-4">
+              <Button
+                icon="download"
+                onClick={onExport}
+                loading={exporting}
+                title={t("logs.export", "Export Logs")}
+                text={isMobile ? undefined : t("logs.export", "Export Logs")}
+              />
               <Switch
                 label={t("logs.realtime")}
                 checked={realtimeRefresh}
@@ -188,15 +199,17 @@ export const LogsHeader: React.FC<LogsHeaderProps> = ({
               />
             )}
           </div>
-          <div className="flex-1 md:max-w-xs">
-            <InputGroup
-              leftIcon="search"
-              placeholder={t("logs.searchPlaceholder")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              rightElement={searchQuery ? <Button icon="cross" minimal onClick={() => setSearchQuery("")} /> : undefined}
-              fill
-            />
+          <div className="flex items-center gap-2 flex-1 md:max-w-md justify-end">
+            <div className="flex-1 md:max-w-xs">
+              <InputGroup
+                leftIcon="search"
+                placeholder={t("logs.searchPlaceholder")}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                rightElement={searchQuery ? <Button icon="cross" minimal onClick={() => setSearchQuery("")} /> : undefined}
+                fill
+              />
+            </div>
           </div>
         </div>
       )}
